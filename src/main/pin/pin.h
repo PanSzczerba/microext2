@@ -3,15 +3,16 @@
 
 #include <stdint.h>
 
-//possible pin states
+/* possible pin states */ 
 #define MEXT2_LOW 0
 #define MEXT2_HIGH 1
 
-//possible pin modes
+/* possible pin modes */
 #define MEXT2_INPUT 0
 #define MEXT2_OUTPUT 1
+#define MEXT2_INPUT_PULLUP 2
 
-//pin numbers
+/* pin numbers */
 #define MEXT2_PWR 0
 #define MEXT2_SCLK 1 
 #define MEXT2_CS 2
