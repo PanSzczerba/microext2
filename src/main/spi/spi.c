@@ -44,26 +44,6 @@ int configure_pins()
 
 /*********** READ/WRITE FUNCTION ***********/
 
-uint8_t signal_to_word(size_t mask, uint8_t word)
-{
-	if(mext2_pin_get(MEXT2_MISO))
-		word = word | mask;
-	else
-		word = word & ~mask;
-
-	return word;
-}
-
-
-void word_to_signal(size_t mask, uint8_t word)
-{
-	if(mask & word)
-		mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
-	else
-		mext2_pin_set(MEXT2_MOSI, MEXT2_LOW);
-}
-
-
 int spi_read_write(uint8_t* buffer, size_t buffer_size)
 {
 	if(!configured_pins)
@@ -78,8 +58,18 @@ int spi_read_write(uint8_t* buffer, size_t buffer_size)
 	{
 		for(uint8_t mask = 0x80; mask > 0; mask >>= 1) 
 		{
-			word_to_signal(mask, buffer[i]); //send command
-			buffer[i] = signal_to_word(mask, buffer[i]); //get response
+			//send command
+			if(mask & buffer[i])
+				mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
+			else
+				mext2_pin_set(MEXT2_MOSI, MEXT2_LOW);
+			
+			//get response
+			if(mext2_pin_get(MEXT2_MISO))
+				buffer[i] = buffer[i] | mask;
+			else
+				buffer[i] = buffer[i] & ~mask;
+
 			mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
 			mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
 		}
