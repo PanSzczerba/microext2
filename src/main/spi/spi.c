@@ -1,5 +1,5 @@
 #include "spi.h"
-#include "debud.h"
+#include "debug.h"
 #include "pin.h"
 #include "timing.h"
 
