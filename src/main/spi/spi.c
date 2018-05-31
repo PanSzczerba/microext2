@@ -1,10 +1,9 @@
 #include "spi.h"
-#include "../platform_specific/raspberrypi/debud.h"
-#include "../platform_specific/raspberrypi/pin.h"
-#include "../platform_specific/raspberrypi/timing.h"
-//#include "../platform_specific/raspberrypi/*.h"
+#include "debud.h"
+#include "pin.h"
+#include "timing.h"
 
-int configured_pins = 0;
+static int configured_pins = 0;
 
 /*********** PIN INICIALIZATION ***********/
 int configure_pins()
