@@ -20,7 +20,7 @@
 /* functions */
 #define mext2_init() wiringPiSetup()
 #define mext2_pin_mode(pin_number, pin_mode) if((pin_mode) == MEXT2_INPUT || (pin_mode) == MEXT2_OUTPUT) pinMode((pin_number), (pin_mode)); \
-                                             else { pinMode((pin_number), INPUT); pullUpDnControl((pin_number), PUD_UP) } // void mext2_pin_mode(uint8_t pin_number, uint8_t pin_mode)
+                                             else { pinMode((pin_number), INPUT); pullUpDnControl((pin_number), PUD_UP); } // void mext2_pin_mode(uint8_t pin_number, uint8_t pin_mode)
 #define mext2_pin_set(pin_number, value) digitalWrite((pin_number), (value)) // void mext2_pin_set(uint8_t pin_number, uint8_t value);
 #define mext2_pin_get(pin_number) digitalRead((pin_number)) // uint8_t mext2_pin_get(uint8_t pin_number);
 
