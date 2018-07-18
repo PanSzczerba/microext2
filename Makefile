@@ -10,9 +10,6 @@ ifdef DEBUG
 CFLAGS+= -O0 -g
 endif
 
-SRCDIR=src
-OUTDIR=out
-
 PINDIR=main/platform_specific
 SPIDIR=main/spi
 PLATFORM=raspberrypi
@@ -21,21 +18,21 @@ ifeq ($(PLATFORM), 'raspberrypi')
 LIBS= -lwiringPi
 endif
 
-INCLUDE:= -I$(SRCDIR)/$(PINDIR)/$(PLATFORM)
-INCLUDE+= -I$(SRCDIR)/$(SPIDIR)
+INCLUDE:= -Isrc/$(PINDIR)/$(PLATFORM)
+INCLUDE+= -Isrc/$(SPIDIR)
 
-all: $(OUTDIR)/$(SPIDIR)/spi.a
+all: out/$(SPIDIR)/spi.a
 
 # SPI 
-$(OUTDIR)/$(SPIDIR)/spi.o: $(SRCDIR)/$(SPIDIR)/spi.c $(SRCDIR)/$(SPIDIR)/spi.h | $(OUTDIR)/$(SPIDIR)
+out/$(SPIDIR)/spi.o: src/$(SPIDIR)/spi.c src/$(SPIDIR)/spi.h | out/$(SPIDIR)
 	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
 	
-$(OUTDIR)/$(SPIDIR)/spi.a: $(OUTDIR)/$(SPIDIR)/spi.o
+out/$(SPIDIR)/spi.a: out/$(SPIDIR)/spi.o
 	$(AR) rcs $@ $^
 
-$(OUTDIR)/$(SPIDIR):
-	mkdir -p $(OUTDIR)/$(SPIDIR)
+out/$(SPIDIR):
+	$(MKDIR) -p out/$(SPIDIR)
 
 # CLEANUP
 clean:
-	$(RM) -rf $(OUTDIR)
+	$(RM) -rf out
