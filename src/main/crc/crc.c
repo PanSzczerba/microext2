@@ -1,7 +1,6 @@
 #include "crc.h"
 
 #define BITS_IN_BYTE 8
-#define BYTE_END_BIT 0x80
 #define SIGNIFICANT_BIT_MASK 0x1
 
 uint32_t mext2_generic_crc(uint8_t* data, size_t data_length, uint32_t polynomial, uint8_t polynomial_length)
