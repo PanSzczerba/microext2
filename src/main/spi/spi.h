@@ -1,5 +1,7 @@
 #ifndef SPI_H
 #define SPI_H
+#include <stdint.h>
+#include <stddef.h>
 
 int configure_pins();
 void reset_pins();

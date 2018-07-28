@@ -1,32 +1,38 @@
 CC=gcc
-CFLAGS=-std=c99 -Wall
+AR=ar
+MKDIR=mkdir
+RM=rm
+CFLAGS= -std=c99 -Wall
+
+DEBUG=1
 
 ifdef DEBUG
 CFLAGS+= -O0 -g
 endif
 
-SRCDIR=src
-OUTDIR=out
-
-PINDIR=main/pin
+PINDIR=main/platform_specific
+SPIDIR=main/spi
 PLATFORM=raspberrypi
 
 ifeq ($(PLATFORM), 'raspberrypi')
-PINLIBS=-lwiringPi
+LIBS= -lwiringPi
 endif
 
-INCLUDE+=-I$(SRCDIR)/$(PINDIR)
+INCLUDE:= -Isrc/$(PINDIR)/$(PLATFORM)
+INCLUDE+= -Isrc/$(SPIDIR)
 
-all: $(OUTDIR)/$(PINDIR)/pin.so
+all: out/$(SPIDIR)/spi.a
 
+# SPI 
+out/$(SPIDIR)/spi.o: src/$(SPIDIR)/spi.c src/$(SPIDIR)/spi.h | out/$(SPIDIR)
+	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
+	
+out/$(SPIDIR)/spi.a: out/$(SPIDIR)/spi.o
+	$(AR) rcs $@ $^
+
+out/$(SPIDIR):
+	$(MKDIR) -p out/$(SPIDIR)
+
+# CLEANUP
 clean:
-	rm -rf $(OUTDIR)
-
-$(OUTDIR)/$(PINDIR)/pin.so: $(OUTDIR)/$(PINDIR)/pin.o 
-	$(CC) -shared -o $@ $< $(PINLIBS) 
-	rm $<
-
-$(OUTDIR)/$(PINDIR)/pin.o: $(SRCDIR)/$(PINDIR)/$(PLATFORM)/pin.c \
-	                       $(SRCDIR)/$(PINDIR)/pin.h
-	mkdir -p $(OUTDIR)/$(PINDIR)
-	$(CC) -c -o $@ $(CFLAGS) $(INCLUDE) -fpic $< 
+	$(RM) -rf out
