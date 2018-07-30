@@ -12,12 +12,12 @@ enum mext2_response_type
     MEXT2_R3,
 };
 
-enum mext2_command
+typedef struct mext2_command
 {
 	uint8_t index;
 	uint8_t argument[4];
 	uint8_t crc;
-} __packed;
+} mext2_command __packed;
 
 struct mext2_response
 {
