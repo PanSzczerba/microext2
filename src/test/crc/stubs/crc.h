@@ -1,5 +1,5 @@
-#ifndef MEXT2_CRC_H
-#define MEXT2_CRC_H
+#ifndef MEXT2_CRC_STUB_H
+#define MEXT2_CRC_STUB_H
 #include <stdint.h>
 #include <stddef.h>
 

@@ -1,38 +1,116 @@
 CC=gcc
-AR=ar
 MKDIR=mkdir
 RM=rm
-CFLAGS= -std=c99 -Wall
+ECHO=echo
+CFLAGS= -std=c99 -Wall 
+LIBCFLAGS= -fPIC 
 
-DEBUG=1
-
-ifdef DEBUG
-CFLAGS+= -O0 -g
+ifeq ($(strip $(DEBUG)), 1)
+	CFLAGS += -O0 -g 
 endif
 
-PINDIR=main/platform_specific
-SPIDIR=main/spi
-PLATFORM=raspberrypi
-
-ifeq ($(PLATFORM), 'raspberrypi')
-LIBS= -lwiringPi
+ifneq ($(VERBOSE), 1)
+	E=@
 endif
 
-INCLUDE:= -Isrc/$(PINDIR)/$(PLATFORM)
-INCLUDE+= -Isrc/$(SPIDIR)
+MAINDIR := main
 
-all: out/$(SPIDIR)/spi.a
+.SECONDEXPANSION:
 
-# SPI 
-out/$(SPIDIR)/spi.o: src/$(SPIDIR)/spi.c src/$(SPIDIR)/spi.h | out/$(SPIDIR)
-	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
+.PRECIOUS: out/%/
 	
-out/$(SPIDIR)/spi.a: out/$(SPIDIR)/spi.o
-	$(AR) rcs $@ $^
+.PHONY: all clean lib test build_test run_test
 
-out/$(SPIDIR):
-	$(MKDIR) -p out/$(SPIDIR)
+define print
+	$(ECHO) "  $1 $2"
+endef
 
-# CLEANUP
+out/%/: # Rule for dirs
+	@$(call print, MKDIR, $(@))
+	$E$(MKDIR) -p $@
+
+########### ALL ##############
+all: lib test
+
+########### COMMON ###########
+COMMONDIR = $(MAINDIR)/common
+INCLUDE = -Isrc/$(COMMONDIR)
+
+###### PLATFORM SPECIFIC #####
+
+DEFAULT_PLATFORM := raspberrypi # raspberrypi, arduino
+PLATFORM = $(strip $(DEFAULT_PLATFORM))
+
+PLATFORMDIR := $(MAINDIR)/platform_specific/$(PLATFORM)
+
+INCLUDE += -Isrc/$(PLATFORMDIR)
+
+ifeq ($(strip $(PLATFORM)), raspberrypi)
+	LIBS= -lwiringPi 
+endif
+
+ifeq ($(strip $(DEBUG)), 1)
+	DEBUG_OBJ = out/$(PLATFORMDIR)/debug.o
+	OBJS += $(DEBUG_OBJ)
+
+out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h) | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) -DMEXT2_MSG_DEBUG $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
+
+endif
+
+########### SPI ##############
+SPIDIR := $(MAINDIR)/spi
+OBJS += out/$(SPIDIR)/spi.o
+INCLUDE += -Isrc/$(SPIDIR)
+
+out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) $(DEBUG_OBJ) | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
+	
+########### CRC ##############
+CRCDIR := $(MAINDIR)/crc
+OBJS += out/$(CRCDIR)/crc.o
+INCLUDE += -Isrc/$(CRCDIR)
+
+out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
+
+########## LIBRARY ###########
+lib: out/$(MAINDIR)/libmext2.so
+
+out/$(MAINDIR)/libmext2.so: $(OBJS)
+	@$(call print, LD, $(@))
+	$E$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
+
+########### TESTS ############
+TESTDIR := test
+TESTDIR_CRC := $(TESTDIR)/crc
+TESTLIBS := -lcunit 
+TEST_INCLUDE := 
+
+#TESTOBJS := out/$(TESTDIR_CRC)/crc_test.o
+
+test: build_test run_test
+
+TEST_BINS = out/$(TESTDIR_CRC)/test
+
+build_test: $(TEST_BINS)
+
+out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) -c -o $@ $< $(TEST_INCLUDE) 
+
+out/$(TESTDIR_CRC)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_CRC)/*.c))) out/$(CRCDIR)/crc.o $(USE_DEBUG_OBJ)
+	@$(call print, LD, $(@))
+	$E$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
+	
+run_test: build_test
+	@$(call print, RUN, out/$(TESTDIR_CRC)/test)
+	$Eout/$(TESTDIR_CRC)/test
+
+########### CLEAN ############
 clean:
-	$(RM) -rf out
+	@$(call print, RM, out)
+	$E$(RM) -rf out
