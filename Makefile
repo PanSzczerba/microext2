@@ -2,6 +2,7 @@ CC=gcc
 AR=ar
 MKDIR=mkdir
 RM=rm
+ECHO=echo
 CFLAGS= -std=c99 -Wall
 LIBCFLAGS= -fPIC
 
@@ -9,14 +10,25 @@ ifeq ($(strip $(DEBUG)), 1)
 	CFLAGS += -O0 -g
 endif
 
+ifneq ($(ECHO), 1)
+	E=@
+endif
+
 MAINDIR := main
 
 .SECONDEXPANSION:
+
+.PRECIOUS: out/%/
 	
 .PHONY: all clean lib test
 
+define print
+	$(ECHO) "  $1 $2"
+endef
+
 out/%/: # Rule for dirs
-	$(MKDIR) -p $@
+	@$(call print, MKDIR, $(@))
+	$E$(MKDIR) -p $@
 
 ########### ALL ##############
 all: lib test
@@ -39,7 +51,8 @@ OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
 out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) | $$(@D)/
-	$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 	
 ########### CRC ##############
 CRCDIR := $(MAINDIR)/crc
@@ -47,13 +60,15 @@ OBJS += out/$(CRCDIR)/crc.o
 INCLUDE += -Isrc/$(CRCDIR)
 
 out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
-	$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so
 
 out/$(MAINDIR)/libmext2.so: $(OBJS)
-	$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
+	@$(call print, CC, $(@))
+	$E$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
 
 ########### TESTS ############
 TESTDIR := test
@@ -65,11 +80,14 @@ TESTOBJS := out/$(TESTDIR_CRC)/crc_test.o
 test: out/$(TESTDIR)/test
 
 out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h | $$(@D)/
-	$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
 
 out/$(TESTDIR)/test: src/$(TESTDIR)/test.o $(TESTOBJS) out/$(MAINDIR)/libmext2.so
-	$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
+	@$(call print, CC, $(@))
+	$E$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
 
 ########### CLEAN ############
 clean:
-	$(RM) -rf out
+	@$(call print, RM, out)
+	$E$(RM) -rf out
