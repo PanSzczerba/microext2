@@ -5,14 +5,12 @@ RM=rm
 CFLAGS= -std=c99 -Wall -fPIC
 LIBCFLAGS= -fPIC
 
-ifeq ($(DEBUG), 1)
+ifeq ($(strip $(DEBUG)), 1)
 	CFLAGS += -O0 -g
 endif
 
 MAINDIR := main
 PINDIR := $(MAINDIR)/platform_specific
-
-
 
 DEFAULT_PLATFORM := raspberrypi # raspberrypi, arduino
 PLATFORM := $(DEFAULT_PLATFORM)
@@ -29,7 +27,7 @@ all: lib test
 SPIDIR := $(MAINDIR)/spi
 INCLUDE += -Isrc/$(SPIDIR)
 
-out/$(SPIDIR)/spi.o: src/$(SPIDIR)/spi.c src/$(SPIDIR)/spi.h | out/$(SPIDIR)
+out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) | out/$(SPIDIR)
 	$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 	
 out/$(SPIDIR):
@@ -39,20 +37,20 @@ out/$(SPIDIR):
 CRCDIR := $(MAINDIR)/crc
 INCLUDE += -Isrc/$(CRCDIR)
 
-out/$(CRCDIR)/crc.o: src/$(CRCDIR)/crc.c src/$(CRCDIR)/crc.h | out/$(CRCDIR)
+out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | out/$(CRCDIR)
 	$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 
 out/$(CRCDIR):
 	$(MKDIR) -p out/$(CRCDIR)
 	
 	
-#LIBRARY
+# LIBRARY
 lib: out/$(MAINDIR)/libmext2.so
 
 out/$(MAINDIR)/libmext2.so: out/$(SPIDIR)/spi.o out/$(CRCDIR)/crc.o
 	$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
 
-#TESTS
+# TESTS
 TESTDIR := test
 TESTLIBS := -lcunit -lmext2 
 test: out/$(TESTDIR)/test
