@@ -83,7 +83,7 @@ out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/$(TESTDIR)/test: src/$(TESTDIR)/test.o $(TESTOBJS) out/$(MAINDIR)/libmext2.so
+out/$(TESTDIR)/test: out/$(TESTDIR)/test.o $(TESTOBJS) out/$(MAINDIR)/libmext2.so
 	@$(call print, CC, $(@))
 	$E$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
 

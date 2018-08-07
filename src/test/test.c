@@ -3,6 +3,7 @@
 #include <CUnit/CUnit.h>
 #include <CUnit/CUCurses.h>
 
+#include "test.h"
 #include "crc/crc_test.h"
 
 
