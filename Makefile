@@ -15,55 +15,54 @@ PINDIR := $(MAINDIR)/platform_specific
 DEFAULT_PLATFORM := raspberrypi # raspberrypi, arduino
 PLATFORM := $(DEFAULT_PLATFORM)
 
+INCLUDE := -Isrc/$(PINDIR)/$(PLATFORM)
+
 ifeq ($(strip $(PLATFORM)), raspberrypi)
 	LIBS= -lwiringPi
 endif
 
-INCLUDE := -Isrc/$(PINDIR)/$(PLATFORM)
+.SECONDEXPANSION:
+	
+.PHONY: all clean lib test
 
 all: lib test
 
+out/%/:
+	$(MKDIR) -p $@
+
 # SPI 
 SPIDIR := $(MAINDIR)/spi
+OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
-out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) | out/$(SPIDIR)
+out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) | $$(@D)/
 	$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 	
-out/$(SPIDIR):
-	$(MKDIR) -p out/$(SPIDIR)
-
 # CRC
 CRCDIR := $(MAINDIR)/crc
+OBJS += out/$(CRCDIR)/crc.o
 INCLUDE += -Isrc/$(CRCDIR)
 
-out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | out/$(CRCDIR)
+out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 	$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/$(CRCDIR):
-	$(MKDIR) -p out/$(CRCDIR)
-	
-	
 # LIBRARY
 lib: out/$(MAINDIR)/libmext2.so
 
-out/$(MAINDIR)/libmext2.so: out/$(SPIDIR)/spi.o out/$(CRCDIR)/crc.o
+out/$(MAINDIR)/libmext2.so: $(OBJS)
 	$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
 
 # TESTS
 TESTDIR := test
+TESTDIR_CRC := $(TESTDIR)/crc
 TESTLIBS := -lcunit -lmext2 
 test: out/$(TESTDIR)/test
 
-out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h
-	$(MKDIR) -p $(dir $@)
+out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h | $$(@D)/
 	$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/$(TESTDIR)/test: src/$(TESTDIR)/test.o out/$(TESTDIR)/crc/crc_test.o out/$(MAINDIR)/libmext2.so
+out/$(TESTDIR)/test: src/$(TESTDIR)/test.o out/$(TESTDIR_CRC)/crc_test.o out/$(MAINDIR)/libmext2.so
 	$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
-
-out/$(TESTDIR):
-	$(MKDIR) -p out/$(TESTDIR)
 
 # CLEANUP
 clean:
