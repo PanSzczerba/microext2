@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <CUnit/CUnit.h>
-#include <CUnit/CUCurses.h>
+#include <CUnit/Basic.h>
 
 #include "test.h"
-#include "crc/crc_test.h"
-
+#include "crc_test.h"
 
 int main(void)
 {
@@ -17,7 +16,8 @@ int main(void)
 
     add_crc_test_suite();
 
-    CU_curses_run_tests();
+    CU_basic_set_mode(CU_BRM_NORMAL);
+    CU_basic_run_tests();
 
 // CLEANUP
     CU_cleanup_registry();

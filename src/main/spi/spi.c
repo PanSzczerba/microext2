@@ -10,7 +10,7 @@ int configure_pins()
 {
 	if(configured_pins)
 	{
-		debug("Error: pins have been already configured\n");
+		warning("Pins have been already configured");
 		return 0;
 	}
 
@@ -36,7 +36,7 @@ int configure_pins()
 	}
 	else
 	{
-		debug("Error: couldn't initialize witingPi setup\n");
+		error("Couldn't initialize witingPi setup");
 		return 1;
 	}
 	return 0;
@@ -48,7 +48,7 @@ int spi_read_write(uint8_t* buffer, size_t buffer_size)
 {
 	if(!configured_pins)
 	{
-		debug("Error: can't read - pins have not been configured\n");
+		error("Can't read - pins have not been configured");
 		return 1;
 	}
 

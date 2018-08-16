@@ -1,5 +1,4 @@
 CC=gcc
-AR=ar
 MKDIR=mkdir
 RM=rm
 ECHO=echo
@@ -10,7 +9,7 @@ ifeq ($(strip $(DEBUG)), 1)
 	CFLAGS += -O0 -g
 endif
 
-ifneq ($(ECHO), 1)
+ifneq ($(VERBOSE), 1)
 	E=@
 endif
 
@@ -20,7 +19,7 @@ MAINDIR := main
 
 .PRECIOUS: out/%/
 	
-.PHONY: all clean lib test
+.PHONY: all clean lib test run_tests
 
 define print
 	$(ECHO) "  $1 $2"
@@ -33,16 +32,26 @@ out/%/: # Rule for dirs
 ########### ALL ##############
 all: lib test
 
-########### PIN ##############
-PINDIR := $(MAINDIR)/platform_specific
+###### PLATFORM SPECIFIC #####
 
 DEFAULT_PLATFORM := raspberrypi # raspberrypi, arduino
-PLATFORM = $(DEFAULT_PLATFORM)
+PLATFORM = $(strip $(DEFAULT_PLATFORM))
 
-INCLUDE = -Isrc/$(PINDIR)/$(PLATFORM)
+PLATFORMDIR := $(MAINDIR)/platform_specific/$(PLATFORM)
+
+INCLUDE = -Isrc/$(PLATFORMDIR)
 
 ifeq ($(strip $(PLATFORM)), raspberrypi)
 	LIBS= -lwiringPi
+endif
+
+ifeq ($(strip $(DEBUG)), 1)
+	OBJS += out/$(PLATFORMDIR)/debug.o
+
+out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h) | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
+
 endif
 
 ########### SPI ##############
@@ -50,7 +59,7 @@ SPIDIR := $(MAINDIR)/spi
 OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
-out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) | $$(@D)/
+out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 	
@@ -73,19 +82,23 @@ out/$(MAINDIR)/libmext2.so: $(OBJS)
 ########### TESTS ############
 TESTDIR := test
 TESTDIR_CRC := $(TESTDIR)/crc
-TESTLIBS := -lcunit -lmext2 
+TESTLIBS := -lcunit 
 
-TESTOBJS := out/$(TESTDIR_CRC)/crc_test.o
+#TESTOBJS := out/$(TESTDIR_CRC)/crc_test.o
 
-test: out/$(TESTDIR)/test
+test: out/$(TESTDIR_CRC)/test 
 
 out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/$(TESTDIR)/test: out/$(TESTDIR)/test.o $(TESTOBJS) out/$(MAINDIR)/libmext2.so
+out/$(TESTDIR_CRC)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_CRC)/*.c))) out/$(CRCDIR)/crc.o
 	@$(call print, CC, $(@))
 	$E$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
+	
+run_tests: test
+	@$(call print, RUN, out/$(TESTDIR_CRC)/test)
+	$Eout/$(TESTDIR_CRC)/test
 
 ########### CLEAN ############
 clean:
