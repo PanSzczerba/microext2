@@ -6,7 +6,7 @@ CFLAGS= -std=c99 -Wall
 LIBCFLAGS= -fPIC
 
 ifeq ($(strip $(DEBUG)), 1)
-	CFLAGS += -O0 -g
+	CFLAGS += -O0 -g 
 endif
 
 ifneq ($(VERBOSE), 1)
@@ -50,7 +50,7 @@ ifeq ($(strip $(DEBUG)), 1)
 
 out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h) | $$(@D)/
 	@$(call print, CC, $(@))
-	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
+	$E$(CC) $(CFLAGS) -DMEXT2_MSG_DEBUG $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 
 endif
 

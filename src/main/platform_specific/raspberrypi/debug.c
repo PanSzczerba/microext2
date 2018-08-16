@@ -4,11 +4,11 @@
 #define TRUE 1
 #define FALSE 0
 
-uint8_t _log_level = WARNING;
-uint8_t _is_log_file_initialized = FALSE;
-FILE* _log_file = NULL;
+uint8_t _mext2_log_level = WARNING;
+uint8_t _mext2_is_log_file_initialized = FALSE;
+FILE* _mext2_log_file = NULL;
 
-char* level2string[] =
+char* mext2_level2string[] =
 {
     "INFO",
     "DEBUG",
@@ -16,19 +16,19 @@ char* level2string[] =
     "ERROR"
 };
 
-void _initialize_log_file()
+void _mext2_initialize_log_file()
 {
-    _log_file = stderr;
+    _mext2_log_file = stderr;
 }
 
-void set_log_file(FILE* file)
+void mext2_set_log_file(FILE* file)
 {
-    _log_file = file;
-    if(!_is_log_file_initialized)
-        _is_log_file_initialized = TRUE;
+    _mext2_log_file = file;
+    if(!_mext2_is_log_file_initialized)
+        _mext2_is_log_file_initialized = TRUE;
 }
 
-FILE* get_log_file()
+FILE* mext2_get_log_file()
 {
-    return _log_file;
+    return _mext2_log_file;
 }

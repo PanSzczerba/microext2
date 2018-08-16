@@ -10,7 +10,7 @@ int configure_pins()
 {
 	if(configured_pins)
 	{
-		warning("Pins have been already configured");
+		mext2_warning("Pins have been already configured");
 		return 0;
 	}
 
@@ -36,7 +36,7 @@ int configure_pins()
 	}
 	else
 	{
-		error("Couldn't initialize witingPi setup");
+		mext2_error("Couldn't initialize witingPi setup");
 		return 1;
 	}
 	return 0;
@@ -48,7 +48,7 @@ int spi_read_write(uint8_t* buffer, size_t buffer_size)
 {
 	if(!configured_pins)
 	{
-		error("Can't read - pins have not been configured");
+		mext2_error("Can't read - pins have not been configured");
 		return 1;
 	}
 
