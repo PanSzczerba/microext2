@@ -36,7 +36,7 @@ void cmd29_test(void)
 void add_crc_test_suite(void)
 {
 
-    CU_pSuite crc_suite = CU_add_suite(CRC_TEST_SUIT_NAME, NULL, NULL);
+    CU_pSuite crc_suite = CU_add_suite(TEST_SUITE_NAME, NULL, NULL);
     CU_ADD_TEST(crc_suite, zero_test);
     CU_ADD_TEST(crc_suite, null_vector_test);
     CU_ADD_TEST(crc_suite, cmd0_test);

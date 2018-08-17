@@ -2,8 +2,8 @@ CC=gcc
 MKDIR=mkdir
 RM=rm
 ECHO=echo
-CFLAGS= -std=c99 -Wall
-LIBCFLAGS= -fPIC
+CFLAGS= -std=c99 -Wall 
+LIBCFLAGS= -fPIC 
 
 ifeq ($(strip $(DEBUG)), 1)
 	CFLAGS += -O0 -g 
@@ -19,7 +19,7 @@ MAINDIR := main
 
 .PRECIOUS: out/%/
 	
-.PHONY: all clean lib test run_tests
+.PHONY: all clean lib test build_test run_test
 
 define print
 	$(ECHO) "  $1 $2"
@@ -42,11 +42,12 @@ PLATFORMDIR := $(MAINDIR)/platform_specific/$(PLATFORM)
 INCLUDE = -Isrc/$(PLATFORMDIR)
 
 ifeq ($(strip $(PLATFORM)), raspberrypi)
-	LIBS= -lwiringPi
+	LIBS= -lwiringPi 
 endif
 
 ifeq ($(strip $(DEBUG)), 1)
-	OBJS += out/$(PLATFORMDIR)/debug.o
+	USE_DEBUG_OBJ = out/$(PLATFORMDIR)/debug.o
+	OBJS += $(USE_DEBUG_OBJ)
 
 out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h) | $$(@D)/
 	@$(call print, CC, $(@))
@@ -59,7 +60,7 @@ SPIDIR := $(MAINDIR)/spi
 OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
-out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) | $$(@D)/
+out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) $(USE_DEBUG_OBJ) | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 	
@@ -76,7 +77,7 @@ out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 lib: out/$(MAINDIR)/libmext2.so
 
 out/$(MAINDIR)/libmext2.so: $(OBJS)
-	@$(call print, CC, $(@))
+	@$(call print, LD, $(@))
 	$E$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
 
 ########### TESTS ############
@@ -86,17 +87,21 @@ TESTLIBS := -lcunit
 
 #TESTOBJS := out/$(TESTDIR_CRC)/crc_test.o
 
-test: out/$(TESTDIR_CRC)/test 
+test: build_test run_test
+
+TEST_BINS = out/$(TESTDIR_CRC)/test
+
+build_test: $(TEST_BINS)
 
 out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/$(TESTDIR_CRC)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_CRC)/*.c))) out/$(CRCDIR)/crc.o
-	@$(call print, CC, $(@))
+out/$(TESTDIR_CRC)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_CRC)/*.c))) out/$(CRCDIR)/crc.o $(USE_DEBUG_OBJ)
+	@$(call print, LD, $(@))
 	$E$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
 	
-run_tests: test
+run_test: build_test
 	@$(call print, RUN, out/$(TESTDIR_CRC)/test)
 	$Eout/$(TESTDIR_CRC)/test
 
