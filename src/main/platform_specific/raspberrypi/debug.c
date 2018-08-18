@@ -4,9 +4,9 @@
 #define TRUE 1
 #define FALSE 0
 
-uint8_t mext2_log_level = WARNING;
-uint8_t mext2_is_log_file_initialized = FALSE;
-FILE* mext2_log_file = NULL;
+static uint8_t mext2_log_level = WARNING;
+static uint8_t mext2_is_log_file_initialized = FALSE;
+static FILE* mext2_log_file = NULL;
 
 char* mext2_level2string[] =
 {
@@ -26,6 +26,11 @@ void mext2_set_log_file(FILE* file)
     mext2_log_file = file;
     if(!mext2_is_log_file_initialized)
         mext2_is_log_file_initialized = TRUE;
+}
+
+void mext2_set_log_level(uint8_t level)
+{
+    mext2_log_level = level;
 }
 
 FILE* mext2_get_log_file()

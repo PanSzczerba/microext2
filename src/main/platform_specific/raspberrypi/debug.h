@@ -18,12 +18,18 @@ enum mext2_log_level
 
 void mext2_initialize_log_file();
 void mext2_set_log_file(FILE* file);
+void mext2_set_log_level(uint8_t level);
 FILE* mext2_get_log_file();
 
 void mext2_msg(uint8_t level, char* str);
 #else
 #define NOOP (void)0
+
 #define mext2_msg(level, str) NOOP
+
+#define mext2_initialize_log_file() NOOP
+#define mext2_set_log_file(file) NOOP
+#define mext2_set_log_level(level) NOOP
 
 #endif
 
