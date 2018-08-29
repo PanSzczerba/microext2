@@ -44,7 +44,7 @@ int configure_pins()
 
 /*********** READ/WRITE FUNCTION ***********/
 
-int spi_read_write(uint8_t* buffer, size_t buffer_size)
+uint8_t spi_read_write(uint8_t* buffer, size_t buffer_size)
 {
 	if(!configured_pins)
 	{

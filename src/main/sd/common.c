@@ -1,18 +1,22 @@
 #include "sd.h"
 #include "spi.h"
+
+#include "debug.h"
+#include "pin.h"
+
 #include <stdlib.h>
 #include <string.h>
 
 #define CRC7_POLYNOMIAL 0x9
 
-uint8_t calc_crc7(uint8_t* buffer, size_t count) // buffer with included byte for crc
+uint8_t calc_crc7(uint8_t* buffer, uint8_t count) // buffer with included byte for crc
 {
     uint8_t* new_buffer = (uint8_t*)malloc(count * sizeof(uint8_t));
     memcpy(new_buffer, buffer, count);
     uint16_t polynomial = CRC7_POLYNOMIAL << 9;
     uint16_t one = 1 << 15;
 
-    size_t current_byte = count - 1;
+    uint8_t current_byte = count - 1;
 
     while(current_byte > 1 || one != (1 << 6))
     {
@@ -40,9 +44,10 @@ uint8_t calc_crc7(uint8_t* buffer, size_t count) // buffer with included byte fo
     return crc;
 }
 
-mext2_response mext2_send_command(mext2_command* command, mext2_response_type response_type)
+mext2_response* send_command(mext2_command* command, mext2_response_type response_type)
 {
-    mext2_spi_read_write(command, COMMAND_SIZE);
+    uint8_t* c = (uint8_t*)command;
+    spi_read_write(c, COMMAND_SIZE);
 
     uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
 
@@ -50,20 +55,20 @@ mext2_response mext2_send_command(mext2_command* command, mext2_response_type re
     for(i = 0; i < N_CYCLES_TIMEOUT && buffer[0] == 0xff; i++)
     {
         buffer[0] = 0xff;
-        mext2_spi_read_write(buffer, 1)
+        spi_read_write(buffer, 1);
     }
 
     if(i == N_CYCLES_TIMEOUT)
     {
         debug("Error: exceeded time limit waiting for response, check your SD card reader device.\n");
-        return NULL;
+        return 0;
     }
     
     if(response_type == MEXT2_R7 || response_type == MEXT2_R3)
     {
-        mext2_spi_read_write(&buffer[1], 4);
+        spi_read_write(&buffer[1], 4);
     }
-    mext2_response response = (mext2_response)buffer;
+    mext2_response* response = (mext2_response*)buffer;
 
     return response;
 }

@@ -5,6 +5,6 @@
 
 int configure_pins();
 void reset_pins();
-int spi_read_write(uint8_t* buff, size_t buff_size);
+uint8_t spi_read_write(uint8_t* buff, size_t buff_size);
 
 #endif
