@@ -61,7 +61,7 @@ mext2_response* send_command(mext2_command* command, mext2_response_type respons
     if(i == N_CYCLES_TIMEOUT)
     {
         debug("Error: exceeded time limit waiting for response, check your SD card reader device.\n");
-        return 0;
+        return NULL;
     }
     
     if(response_type == MEXT2_R7 || response_type == MEXT2_R3)

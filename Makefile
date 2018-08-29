@@ -82,11 +82,19 @@ out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 lib: out/$(MAINDIR)/libmext2.so
 
 # SD 
-out/main/sd/sd.a: out/main/sd/sd.o
+out/main/sd/sd.a: out/main/sd/init.o out/main/sd/common.o out/main/sd/rw.o
 	$(AR) rcs $@ $^
 
-out/main/sd/sd.o: src/main/sd/common.c src/main/sd/init.c src/main/sd/rw.c src/main/sd/sd.h | out/main/sd
+out/main/sd/init.o: src/main/sd/init.c src/main/sd/sd.h | out/main/sd
 	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
+
+out/main/sd/common.o: src/main/sd/common.c src/main/sd/sd.h | out/main/sd
+	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
+
+out/main/sd/rw.o: src/main/sd/rw.c src/main/sd/sd.h | out/main/sd
+	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
+
+	src/main/sd/common.c  src/main/sd/rw.c
 
 out/main/sd:
 	$(MKDIR) -p out/main/sd

@@ -1,10 +1,15 @@
 #ifndef MEXT2_SD_H
 #define MEXT2_SD_H
 #include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 #define __packed __attribute__((packed))
 
 #define OCR_REGISTER_LENGTH 4
+#define COMMAND_ARGUMENT_SIZE 4
 #define N_CYCLES_TIMEOUT        (uint16_t) 512
 
 typedef enum mext2_response_type
@@ -18,7 +23,7 @@ typedef enum mext2_response_type
 struct mext2_command
 {
 	uint8_t index;
-	uint8_t argument[4];
+	uint8_t argument[COMMAND_ARGUMENT_SIZE];
 	uint8_t crc;
 } __packed;
 typedef struct mext2_command mext2_command;
@@ -32,7 +37,11 @@ struct mext2_response
 } __packed;
 typedef struct mext2_response mext2_response;
 
-//uint8_t mext2_send_command(uint8_t command_no, uint32_t command_arg, uint8_t* response, uint8_t response_length);
+#define R1_IN_IDLE_STATE (uint8_t)0x01
+#define R1_ILLEGAL_COMMAND (uint8_t)0x04
+
 uint8_t calc_command_number(uint8_t number);
-uint8_t calc_crc7(uint8_t* buffer, uint8_t count) ;
+uint8_t calc_crc7(uint8_t* buffer, uint8_t count);
+mext2_response* send_command(mext2_command* command, mext2_response_type response_type);
+void wait_after_response(uint8_t* buffer);
 #endif
