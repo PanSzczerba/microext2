@@ -3,14 +3,15 @@
 #include <stdint.h>
 
 #define __packed __attribute__((packed))
-#define MAX_RESPONSE_LENGTH 5
+#define OCR_REGISTER_LENGTH 4
 
-enum mext2_response_type
+typedef enum mext2_response_type
 {
     MEXT2_R1,
     MEXT2_R2,
     MEXT2_R3,
-};
+    MEXT2_R7
+} mext2_response_type;
 
 typedef struct mext2_command
 {
@@ -19,11 +20,13 @@ typedef struct mext2_command
 	uint8_t crc;
 } mext2_command __packed;
 
-struct mext2_response
+#define COMMAND_SIZE ((uint8_t)sizeof(mext2_command) / sizeof(uint8_t))
+
+typedef struct mext2_response
 {
-    uint8_t response[MAX_RESPONSE_LENGTH];
-    uint8_t response_type;
-} __packed;
+    uint8_t r1;
+    uint8_t ocr[OCR_REGISTER_LENGTH];
+} mext2_response __packed;
 
 uint8_t mext2_send_command(uint8_t command_no, uint32_t command_arg, uint8_t* response, uint8_t response_length);
 uint8_t calc_command_number(uint8_t number);

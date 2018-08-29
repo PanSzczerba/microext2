@@ -1,4 +1,5 @@
 CC=gcc
+AR=ar
 MKDIR=mkdir
 RM=rm
 ECHO=echo
@@ -79,6 +80,16 @@ out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so
+
+# SD 
+out/main/sd/sd.a: out/main/sd/sd.o
+	$(AR) rcs $@ $^
+
+out/main/sd/sd.o: src/main/sd/common.c src/main/sd/init.c src/main/sd/rw.c src/main/sd/sd.h | out/main/sd
+	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
+
+out/main/sd:
+	$(MKDIR) -p out/main/sd
 
 out/$(MAINDIR)/libmext2.so: $(OBJS)
 	@$(call print, LD, $(@))
