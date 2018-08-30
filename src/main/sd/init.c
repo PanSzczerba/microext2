@@ -44,13 +44,8 @@ uint8_t csd_register[16];
 bool reset_software()
 {
     //set CMD0
-    command -> index = calc_command_number(COMMAND_SOFTWARE_RESET);
-
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
-        command -> argument[i] = command_argument[i];
-
-    command -> crc = calc_crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+    set_command(command, COMMAND_SOFTWARE_RESET, command_argument); 
 
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL || response -> r1 != R1_IN_IDLE_STATE)
@@ -65,13 +60,8 @@ bool reset_software()
 bool check_voltage_range()
 {
     //set CMD8
-    command -> index = calc_command_number(COMMAND_CHECK_VOLTAGE);
-
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
-    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
-        command -> argument[i] = command_argument[i];
-
-    command -> crc = calc_crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+    set_command(command, COMMAND_CHECK_VOLTAGE, command_argument); 
 
     mext2_response* response = send_command(command, MEXT2_R7);
      if(response == NULL)
@@ -89,13 +79,8 @@ bool check_voltage_range()
 bool read_OCR()
 {
     //set CMD58
-    command -> index = calc_command_number(COMMAND_READ_OCR);
-
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
-        command -> argument[i] = command_argument[i];
-
-    command -> crc = calc_crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+    set_command(command, COMMAND_READ_OCR, command_argument); 
 
     mext2_response* response = send_command(command, MEXT2_R3);
     if(response == NULL || (response -> r1 & R1_ILLEGAL_COMMAND) == true)
@@ -118,13 +103,8 @@ bool read_OCR()
 bool prepare_init_process()
 {
     //set CMD55
-    command -> index = calc_command_number(COMMAND_BEFORE_INIT_PROCESS);
-
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
-        command -> argument[i] = command_argument[i];
-
-    command -> crc = calc_crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+    set_command(command, COMMAND_BEFORE_INIT_PROCESS, command_argument); 
 
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL || response -> r1 & R1_ILLEGAL_COMMAND)
@@ -138,13 +118,8 @@ bool prepare_init_process()
 uint8_t start_init_process()
 {
     //set ACMD41
-    command -> index = calc_command_number(COMMAND_INIT_PROCESS);
-
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
-        command -> argument[i] = command_argument[i];
-
-    command -> crc = calc_crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+    set_command(command, COMMAND_INIT_PROCESS, command_argument); 
 
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL)
@@ -159,17 +134,13 @@ uint8_t start_init_process()
 bool read_CSD_register()
 {
     //set CMD9
-    command -> index = calc_command_number(COMMAND_READ_CSD);
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
-        command -> argument[i] = command_argument[i];
-
-    command -> crc = calc_crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+    set_command(command, COMMAND_READ_CSD, command_argument); 
 
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL)
     {
-        return 0;
+        return false;
     }
 
 
@@ -180,18 +151,8 @@ bool read_CSD_register()
     else
     {
         uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
-        uint16_t i;
-        for(i = 0; i < N_CYCLES_TIMEOUT && buffer[0] == 0xff; i++)
-        {
-            buffer[0]  = 0xff;
-            spi_read_write(buffer, 1);
-        }
-
-        if(i == N_CYCLES_TIMEOUT)
-        {
-            debug("Error: exceeded time limit waiting for response, check your SD card reader device.\n");
+        if(wait_for_response(buffer) == false) 
             return false;
-        }
 
         memset(csd_register, 0xff, 16);
         spi_read_write(csd_register, 16);

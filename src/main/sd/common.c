@@ -44,14 +44,10 @@ uint8_t calc_crc7(uint8_t* buffer, uint8_t count) // buffer with included byte f
     return crc;
 }
 
-mext2_response* send_command(mext2_command* command, mext2_response_type response_type)
+bool wait_for_response(uint8_t* buffer)
 {
-    uint8_t* c = (uint8_t*)command;
-    spi_read_write(c, COMMAND_SIZE);
-
-    uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
-
     uint16_t i;
+    buffer[0] = 0xff;
     for(i = 0; i < N_CYCLES_TIMEOUT && buffer[0] == 0xff; i++)
     {
         buffer[0] = 0xff;
@@ -61,8 +57,29 @@ mext2_response* send_command(mext2_command* command, mext2_response_type respons
     if(i == N_CYCLES_TIMEOUT)
     {
         debug("Error: exceeded time limit waiting for response, check your SD card reader device.\n");
-        return NULL;
+        return false;
     }
+
+    return true;
+}
+ 
+void set_command(mext2_command* command, uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE])
+{
+    command -> index = calc_command_number(command_name);
+    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
+        command -> argument[i] = command_argument[i];
+    command -> crc = calc_crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+}
+
+mext2_response* send_command(mext2_command* command, mext2_response_type response_type)
+{
+    uint8_t* c = (uint8_t*)command;
+    spi_read_write(c, COMMAND_SIZE);
+
+    uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
+
+    if(wait_for_response(buffer) == false)
+        return NULL;
     
     if(response_type == MEXT2_R7 || response_type == MEXT2_R3)
     {

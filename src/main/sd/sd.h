@@ -43,5 +43,7 @@ typedef struct mext2_response mext2_response;
 uint8_t calc_command_number(uint8_t number);
 uint8_t calc_crc7(uint8_t* buffer, uint8_t count);
 mext2_response* send_command(mext2_command* command, mext2_response_type response_type);
+bool wait_for_response(uint8_t* buffer);
 void wait_after_response(uint8_t* buffer);
+void set_command(mext2_command* command, uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE]);
 #endif
