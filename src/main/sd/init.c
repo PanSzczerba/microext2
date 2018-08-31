@@ -53,7 +53,7 @@ bool reset_software()
         return false;
     }
 
-    wait_after_response((uint8_t*) response);
+    wait_8_clock_cycles((uint8_t*) response);
     return true;
 }
 
@@ -72,7 +72,7 @@ bool check_voltage_range()
     if(response -> r1 & R1_ILLEGAL_COMMAND)
         sd_version = SD_V1X;
 
-    wait_after_response((uint8_t*) response);
+    wait_8_clock_cycles((uint8_t*) response);
     return true;
 }
 
@@ -96,7 +96,7 @@ bool read_OCR()
             sd_version = SD_V2X;
     }
 
-    wait_after_response((uint8_t*) response);
+    wait_8_clock_cycles((uint8_t*) response);
     return true;
 }
 
@@ -111,7 +111,7 @@ bool prepare_init_process()
     {
         return false;
     }
-    wait_after_response((uint8_t*) response);
+    wait_8_clock_cycles((uint8_t*) response);
     return true;
 }
 
@@ -161,7 +161,7 @@ bool read_CSD_register()
         spi_read_write(buffer, 2);
     }
 
-    wait_after_response((uint8_t*) response);
+    wait_8_clock_cycles((uint8_t*) response);
 
     return true;
 }

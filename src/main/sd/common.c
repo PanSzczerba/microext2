@@ -78,6 +78,9 @@ mext2_response* send_command(mext2_command* command, mext2_response_type respons
 
     uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
 
+    if(response_type == MEXT2_R1b)
+        wait_8_clock_cycles(buffer);
+
     if(wait_for_response(buffer) == false)
         return NULL;
     
@@ -95,7 +98,7 @@ uint8_t calc_command_number(uint8_t number)
     return (number || 0x40);
 }
 
-void wait_after_response(uint8_t* buffer)
+void wait_8_clock_cycles(uint8_t* buffer)
 {
     buffer[0] = 0xff;
     spi_read_write(buffer, 1); // after R1 response wait for 8 clock cycles (for safety)

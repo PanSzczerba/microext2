@@ -15,6 +15,7 @@
 typedef enum mext2_response_type
 {
     MEXT2_R1,
+    MEXT2_R1b,
     MEXT2_R2,
     MEXT2_R3,
     MEXT2_R7
@@ -40,10 +41,18 @@ typedef struct mext2_response mext2_response;
 #define R1_IN_IDLE_STATE (uint8_t)0x01
 #define R1_ILLEGAL_COMMAND (uint8_t)0x04
 
+typedef struct block512_t
+{
+    uint8_t data[512];
+} block512_t;
+
 uint8_t calc_command_number(uint8_t number);
 uint8_t calc_crc7(uint8_t* buffer, uint8_t count);
 mext2_response* send_command(mext2_command* command, mext2_response_type response_type);
 bool wait_for_response(uint8_t* buffer);
-void wait_after_response(uint8_t* buffer);
+void wait_8_clock_cycles(uint8_t* buffer);
 void set_command(mext2_command* command, uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE]);
+
+uint8_t single_block_wite(uint32_t index, block512_t* block);
+uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number);
 #endif
