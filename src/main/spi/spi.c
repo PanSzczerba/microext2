@@ -36,7 +36,7 @@ int configure_pins()
 	}
 	else
 	{
-		mext2_error("Couldn't initialize witingPi setup");
+		mext2_error("Couldn't initialize wiringPi setup");
 		return 1;
 	}
 	return 0;
