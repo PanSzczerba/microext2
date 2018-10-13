@@ -1,12 +1,10 @@
 #include <stdio.h>
 #include "debug.h"
+#include "common.h"
 
-#define TRUE 1
-#define FALSE 0
-
-static uint8_t mext2_log_level = WARNING;
-static uint8_t mext2_is_log_file_initialized = FALSE;
-static FILE* mext2_log_file = NULL;
+STATIC uint8_t mext2_log_level = WARNING;
+STATIC uint8_t mext2_is_log_file_initialized = FALSE;
+STATIC FILE* mext2_log_file = NULL;
 
 char* mext2_level2string[] =
 {

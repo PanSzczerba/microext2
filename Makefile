@@ -32,6 +32,10 @@ out/%/: # Rule for dirs
 ########### ALL ##############
 all: lib test
 
+########### COMMON ###########
+COMMONDIR = $(MAINDIR)/common
+INCLUDE = -Isrc/$(COMMONDIR)
+
 ###### PLATFORM SPECIFIC #####
 
 DEFAULT_PLATFORM := raspberrypi # raspberrypi, arduino
@@ -39,15 +43,15 @@ PLATFORM = $(strip $(DEFAULT_PLATFORM))
 
 PLATFORMDIR := $(MAINDIR)/platform_specific/$(PLATFORM)
 
-INCLUDE = -Isrc/$(PLATFORMDIR)
+INCLUDE += -Isrc/$(PLATFORMDIR)
 
 ifeq ($(strip $(PLATFORM)), raspberrypi)
 	LIBS= -lwiringPi 
 endif
 
 ifeq ($(strip $(DEBUG)), 1)
-	USE_DEBUG_OBJ = out/$(PLATFORMDIR)/debug.o
-	OBJS += $(USE_DEBUG_OBJ)
+	DEBUG_OBJ = out/$(PLATFORMDIR)/debug.o
+	OBJS += $(DEBUG_OBJ)
 
 out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h) | $$(@D)/
 	@$(call print, CC, $(@))
@@ -60,7 +64,7 @@ SPIDIR := $(MAINDIR)/spi
 OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
-out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) $(USE_DEBUG_OBJ) | $$(@D)/
+out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) $(DEBUG_OBJ) | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 	
@@ -84,6 +88,7 @@ out/$(MAINDIR)/libmext2.so: $(OBJS)
 TESTDIR := test
 TESTDIR_CRC := $(TESTDIR)/crc
 TESTLIBS := -lcunit 
+TEST_INCLUDE := 
 
 #TESTOBJS := out/$(TESTDIR_CRC)/crc_test.o
 
@@ -95,7 +100,7 @@ build_test: $(TEST_BINS)
 
 out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h | $$(@D)/
 	@$(call print, CC, $(@))
-	$E$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
+	$E$(CC) $(CFLAGS) -c -o $@ $< $(TEST_INCLUDE) 
 
 out/$(TESTDIR_CRC)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_CRC)/*.c))) out/$(CRCDIR)/crc.o $(USE_DEBUG_OBJ)
 	@$(call print, LD, $(@))
