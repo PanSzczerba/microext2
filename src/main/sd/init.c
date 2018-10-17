@@ -146,7 +146,7 @@ bool read_CSD_register()
 
     if(response -> r1 != 0)
     {
-        debug("Error: reading CSD register failed\n");
+        mext2_warning("Reading CSD register failed\n");
     }
     else
     {
@@ -202,7 +202,7 @@ uint8_t init()
             {
                 if(configure_pins() == 1)
                 {
-                    debug("Error: pin initialization failed\n");
+                    mext2_error("Pin initialization failed.");
                     sd_state = SD_ERROR;
                     break;
                 }
@@ -223,7 +223,7 @@ uint8_t init()
 
                 if(reset_software() == false)
                 {
-                    debug("Error: not an SD card\n");
+                    mext2_error("Not an SD card.");
                     sd_state = SD_ERROR;
                     break;
                 } else sd_state = SD_CHECK_VOLTAGE;
@@ -233,7 +233,7 @@ uint8_t init()
             {
                 if(check_voltage_range() == false)
                 {
-                    debug("Error: wrong voltage range.\n");
+                    mext2_error("Wrong voltage range.");
                     sd_state = SD_ERROR;
                     break;
                 } else sd_state = SD_READ_OCR;
@@ -243,7 +243,7 @@ uint8_t init()
             {
                 if(read_OCR() == false)
                 {
-                    debug("Error: cannot read OCR.\n");
+                    mext2_error("Cannot read OCR.");
                     sd_state = SD_ERROR;
                     break;
                 } else sd_state = SD_PREPARE_INIT_PROCESS;
@@ -253,7 +253,7 @@ uint8_t init()
             {
                 if(prepare_init_process() == false)
                 {
-                    debug("Error: cannot prepare for initialization process.\n");
+                    mext2_error("Cannot prepare for initialization process.");
                     reset_pins();
                     sd_state = SD_ERROR;
                     break;
@@ -280,7 +280,7 @@ uint8_t init()
                     check_sd_version = true;
                     if(read_OCR() == false)
                     {
-                        debug("Error: cannot read OCR.\n");
+                        mext2_error("Cannot read OCR.");
                         sd_state = SD_ERROR;
                         break;
                     }
@@ -292,7 +292,7 @@ uint8_t init()
             {
                 if(read_CSD_register() == false)
                 {
-                    debug("Error: cannot read CSD register.\n");
+                    mext2_error("Cannot read CSD register.");
                     reset_pins();
                     sd_state = SD_ERROR;
                     break;

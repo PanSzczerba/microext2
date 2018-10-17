@@ -56,7 +56,7 @@ bool wait_for_response(uint8_t* buffer)
 
     if(i == N_CYCLES_TIMEOUT)
     {
-        debug("Error: exceeded time limit waiting for response, check your SD card reader device.\n");
+        mext2_error("Error: exceeded time limit waiting for response, check your SD card reader device.");
         return false;
     }
 

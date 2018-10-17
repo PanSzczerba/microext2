@@ -25,7 +25,7 @@ uint8_t single_block_read(uint32_t index, block512_t* block)
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL || response -> r1 != 0)
     {
-        debug("Error: can't read block");
+        mext2_error("Can't read block");
         return 1;
     }
 
@@ -34,7 +34,7 @@ uint8_t single_block_read(uint32_t index, block512_t* block)
 
     if(response -> r1 != 0xfe)
     {
-        debug("Error: received wrong data token");
+        mext2_error("Received wrong data token");
         return 1;
     }
 
@@ -61,7 +61,7 @@ uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_nu
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL || response -> r1 != 0)
     {
-        debug("Error: can't read block");
+        mext2_error("Can't read block");
         return 1;
     }
 
@@ -72,7 +72,7 @@ uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_nu
 
         if(response -> r1 != 0xfe)
         {
-            debug("Error: received wrong data token");
+            mext2_error("Received wrong data token");
             return 1;
         }
 
@@ -91,7 +91,7 @@ uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_nu
     response = send_command(command, MEXT2_R1b);
     if(response == NULL || response -> r1 != 0)
     {
-        debug("Error: can't read block");
+        mext2_error("Can't read block");
         return 1;
     }
 
@@ -113,7 +113,7 @@ uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
 {
     if(blocks_number < 1)
     {
-        debug("Error: can't read 0 blocks\n");
+        mext2_error("Can't read 0 blocks.");
         return 1;
     }
 
@@ -148,7 +148,7 @@ uint8_t single_block_wite(uint32_t index, block512_t* block)
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL || response -> r1 != 0)
     {
-        debug("Error: can't write block");
+        mext2_error("Can't write block.");
         return 1;
     }
 
@@ -181,7 +181,7 @@ uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_n
     mext2_response* response = send_command(command, MEXT2_R1);
     if(response == NULL || response -> r1 != 0)
     {
-        debug("Error: can't write block");
+        mext2_error("Can't write block.");
         return 1;
     }
 
@@ -210,7 +210,7 @@ uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_n
     response = send_command(command, MEXT2_R1b);
     if(response == NULL || response -> r1 != 0)
     {
-        debug("Error: can't read block");
+        mext2_error("Can't read block.");
         return 1;
     }
 
@@ -230,7 +230,7 @@ uint8_t write_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
 {
     if(blocks_number < 1)
     {
-        debug("Error: can't write 0 blocks\n");
+        mext2_error("Can't write 0 blocks.");
         return 1;
     }
 
