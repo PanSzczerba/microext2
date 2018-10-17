@@ -2,11 +2,10 @@
 #include "debug.h"
 #include "pin.h"
 #include "spi.h"
+#include "commands.h"
 
 static bool sd_card_initialized = false;
-uint8_t csd_register[16];
 static uint8_t sd_state;
-mext2_command* command;
 
 #define SD_NOT_DETERMINED   0
 #define SD_V1X              1
@@ -14,14 +13,7 @@ mext2_command* command;
 #define SD_V2XHCXC          3
 
 uint8_t sd_version = SD_NOT_DETERMINED;
-
-
-#define COMMAND_SOFTWARE_RESET      (uint8_t)0x00    //CMD0
-#define COMMAND_CHECK_VOLTAGE       (uint8_t)0x08    //CMD8
-#define COMMAND_READ_OCR            (uint8_t)0x3A    //CMD58
-#define COMMAND_BEFORE_INIT_PROCESS (uint8_t)0x37    //CMD55
-#define COMMAND_INIT_PROCESS        (uint8_t)0x29    //ACMD41
-#define COMMAND_READ_CSD            (uint8_t)0x09    //CMD09
+bool check_sd_version = false;
 
 #define SD_INIT_OK              (uint8_t)0x00
 #define SD_INIT_NOK             (uint8_t)0x01
@@ -38,10 +30,7 @@ uint8_t sd_version = SD_NOT_DETERMINED;
 #define SD_READ_OCR_AGAIN       (uint8_t)0x0b
 #define SD_READ_CSD             (uint8_t)0x0c
 
-bool check_sd_version = false;
-uint8_t csd_register[16];
-
-bool reset_software()
+bool reset_software(mext2_command* command)
 {
     //set CMD0
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -57,7 +46,7 @@ bool reset_software()
     return true;
 }
 
-bool check_voltage_range()
+bool check_voltage_range(mext2_command* command)
 {
     //set CMD8
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
@@ -76,7 +65,7 @@ bool check_voltage_range()
     return true;
 }
 
-bool read_OCR()
+bool read_OCR(mext2_command* command)
 {
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -100,7 +89,7 @@ bool read_OCR()
     return true;
 }
 
-bool prepare_init_process()
+bool prepare_init_process(mext2_command* command)
 {
     //set CMD55
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -115,7 +104,7 @@ bool prepare_init_process()
     return true;
 }
 
-uint8_t start_init_process()
+uint8_t start_init_process(mext2_command* command)
 {
     //set ACMD41
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -131,8 +120,9 @@ uint8_t start_init_process()
 }
 
 
-bool read_CSD_register()
+bool read_CSD_register(mext2_command* command)
 {
+    uint8_t csd_register[16];
     //set CMD9
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     set_command(command, COMMAND_READ_CSD, command_argument); 
@@ -142,7 +132,6 @@ bool read_CSD_register()
     {
         return false;
     }
-
 
     if(response -> r1 != 0)
     {
@@ -184,6 +173,7 @@ uint8_t init()
 
             case SD_INITIALIZED:
             {
+                mext2_log("Card already initialized.");
                 free(command);
                 return SD_INIT_OK;
             }
@@ -221,7 +211,7 @@ uint8_t init()
                     digitalWrite(MEXT2_SCLK, MEXT2_LOW);
                 }
 
-                if(reset_software() == false)
+                if(reset_software(command) == false)
                 {
                     mext2_error("Not an SD card.");
                     sd_state = SD_ERROR;
@@ -231,7 +221,7 @@ uint8_t init()
 
             case SD_CHECK_VOLTAGE:
             {
-                if(check_voltage_range() == false)
+                if(check_voltage_range(command) == false)
                 {
                     mext2_error("Wrong voltage range.");
                     sd_state = SD_ERROR;
@@ -241,7 +231,7 @@ uint8_t init()
 
             case SD_READ_OCR:
             {
-                if(read_OCR() == false)
+                if(read_OCR(command) == false)
                 {
                     mext2_error("Cannot read OCR.");
                     sd_state = SD_ERROR;
@@ -251,7 +241,7 @@ uint8_t init()
 
             case SD_PREPARE_INIT_PROCESS:
             {
-                if(prepare_init_process() == false)
+                if(prepare_init_process(command) == false)
                 {
                     mext2_error("Cannot prepare for initialization process.");
                     reset_pins();
@@ -262,7 +252,7 @@ uint8_t init()
 
             case SD_START_INIT_PROCESS:
             {
-                uint8_t response = start_init_process();
+                uint8_t response = start_init_process(command);
                 if(response & R1_IN_IDLE_STATE)
                 {
                     sd_state = SD_PREPARE_INIT_PROCESS;
@@ -278,7 +268,7 @@ uint8_t init()
                 if(sd_version != SD_V1X)
                 {
                     check_sd_version = true;
-                    if(read_OCR() == false)
+                    if(read_OCR(command) == false)
                     {
                         mext2_error("Cannot read OCR.");
                         sd_state = SD_ERROR;
@@ -290,7 +280,7 @@ uint8_t init()
 
             case SD_READ_CSD:
             {
-                if(read_CSD_register() == false)
+                if(read_CSD_register(command) == false)
                 {
                     mext2_error("Cannot read CSD register.");
                     reset_pins();

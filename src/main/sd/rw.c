@@ -2,12 +2,7 @@
 #include "debug.h"
 #include "pin.h"
 #include "spi.h"
-
-#define COMMAND_READ_SINGLE_BLOCK       (uint8_t)0x11   //CMD17
-#define COMMAND_READ_MULTIPLE_BLOCK     (uint8_t)0x12   //CMD18
-#define COMMAND_WRITE_SINGLE_BLOCK      (uint8_t)0x18   //CMD24
-#define COMMAND_WRITE_MULTIPLE_BLOCK    (uint8_t)0x19   //CMD25
-#define COMMAND_STOP_READ_DATA          (uint8_t)0x0c   //CMD12
+#include "commands.h"
 
 mext2_command* command;
 
