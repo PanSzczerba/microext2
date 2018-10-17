@@ -7,4 +7,6 @@
 
 #define STATIC static
 
+#define __packed __attribute__((packed))
+
 #endif

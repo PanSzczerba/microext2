@@ -1,6 +1,7 @@
 #include "sd.h"
 #include "spi.h"
 #include "crc.h"
+#include "command.h"
 
 #include "debug.h"
 #include "pin.h"

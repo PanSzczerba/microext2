@@ -2,18 +2,18 @@
 #include "debug.h"
 #include "pin.h"
 #include "spi.h"
-#include "commands.h"
+#include "command.h"
 
-static bool sd_card_initialized = false;
-static uint8_t sd_state;
+STATIC bool sd_card_initialized = false;
+STATIC uint8_t sd_state;
 
 #define SD_NOT_DETERMINED   0
 #define SD_V1X              1
 #define SD_V2X              2
 #define SD_V2XHCXC          3
 
-uint8_t sd_version = SD_NOT_DETERMINED;
-bool check_sd_version = false;
+STATIC uint8_t sd_version = SD_NOT_DETERMINED;
+STATIC bool check_sd_version = false;
 
 #define SD_INIT_OK              (uint8_t)0x00
 #define SD_INIT_NOK             (uint8_t)0x01
@@ -30,7 +30,7 @@ bool check_sd_version = false;
 #define SD_READ_OCR_AGAIN       (uint8_t)0x0b
 #define SD_READ_CSD             (uint8_t)0x0c
 
-bool reset_software()
+STATIC bool reset_software()
 {
     //set CMD0
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -45,7 +45,7 @@ bool reset_software()
     return true;
 }
 
-bool check_voltage_range()
+STATIC bool check_voltage_range()
 {
     //set CMD8
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
@@ -63,7 +63,7 @@ bool check_voltage_range()
     return true;
 }
 
-bool read_OCR()
+STATIC bool read_OCR()
 {
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -86,7 +86,7 @@ bool read_OCR()
     return true;
 }
 
-bool prepare_init_process()
+STATIC bool prepare_init_process()
 {
     //set CMD55
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -100,7 +100,7 @@ bool prepare_init_process()
     return true;
 }
 
-uint8_t start_init_process()
+STATIC uint8_t start_init_process()
 {
     //set ACMD41
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -114,7 +114,7 @@ uint8_t start_init_process()
     return response -> r1;
 }
 
-bool read_CSD_register()
+STATIC bool read_CSD_register()
 {
     uint8_t csd_register[16];
     //set CMD9

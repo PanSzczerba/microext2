@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#define __packed __attribute__((packed))
+#include "common.h"
 
 #define OCR_REGISTER_LENGTH 4
 #define COMMAND_ARGUMENT_SIZE 4
@@ -46,12 +46,8 @@ typedef struct block512_t
     uint8_t data[512];
 } block512_t;
 
-uint8_t calc_command_number(uint8_t number);
-mext2_response* send_command(mext2_command* command, mext2_response_type response_type);
-bool wait_for_response(uint8_t* buffer);
-void wait_8_clock_cycles(uint8_t* buffer);
-mext2_command* set_command(uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE]);
 
+uint8_t init();
 uint8_t single_block_wite(uint32_t index, block512_t* block);
 uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number);
 #endif

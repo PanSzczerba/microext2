@@ -87,8 +87,8 @@ out/main/sd/sd.a:out/main/sd/common.o out/main/sd/init.o out/main/sd/rw.o
 	@echo ----make sd lib
 	$(AR) rcs $@ $^
 
-out/main/sd/common.o: src/main/sd/common.c src/main/sd/sd.h | out/main/sd
-	@echo ----make sd common
+out/main/sd/common.o: src/main/sd/command.c src/main/sd/command.h src/main/sd/sd.h | out/main/sd
+	@echo ----make sd command
 	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
 
 out/main/sd/init.o: src/main/sd/init.c src/main/sd/sd.h | out/main/sd

@@ -2,10 +2,9 @@
 #include "debug.h"
 #include "pin.h"
 #include "spi.h"
-#include "commands.h"
+#include "command.h"
 
-
-uint8_t single_block_read(uint32_t index, block512_t* block)
+STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command* command = set_command(COMMAND_READ_SINGLE_BLOCK, command_argument);    //set CMD17
@@ -41,7 +40,7 @@ uint8_t single_block_read(uint32_t index, block512_t* block)
     return 0;
 }
 
-uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command* command = set_command(COMMAND_READ_MULTIPLE_BLOCK, command_argument);    //set CMD18
@@ -101,8 +100,6 @@ uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_nu
     return 0;
 }
 
-
-
 uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
 {
     if(blocks_number < 1)
@@ -129,7 +126,7 @@ uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
 
 //////////////////////////////////////////////////////
 
-uint8_t single_block_wite(uint32_t index, block512_t* block)
+STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command* command = set_command(COMMAND_WRITE_SINGLE_BLOCK, command_argument);    //set CMD24
@@ -162,7 +159,7 @@ uint8_t single_block_wite(uint32_t index, block512_t* block)
     return 0;
 }
 
-uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command* command = set_command(COMMAND_WRITE_MULTIPLE_BLOCK, command_argument);    //set CMD25
