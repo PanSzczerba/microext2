@@ -6,7 +6,7 @@
 static int configured_pins = 0;
 
 /*********** PIN INICIALIZATION ***********/
-int configure_pins()
+uint8_t configure_pins()
 {
 	if(configured_pins)
 	{

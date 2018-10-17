@@ -27,12 +27,14 @@ bool wait_for_response(uint8_t* buffer)
     return true;
 }
  
-void set_command(mext2_command* command, uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE])
+mext2_command* set_command(uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE])
 {
+    mext2_command* command;
     command -> index = calc_command_number(command_name);
     for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
         command -> argument[i] = command_argument[i];
     command -> crc = crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t));
+    return command;
 }
 
 mext2_response* send_command(mext2_command* command, mext2_response_type response_type)

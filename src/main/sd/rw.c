@@ -4,12 +4,11 @@
 #include "spi.h"
 #include "commands.h"
 
-mext2_command* command;
 
 uint8_t single_block_read(uint32_t index, block512_t* block)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
-    set_command(command, COMMAND_READ_SINGLE_BLOCK, command_argument);    //set CMD17
+    mext2_command* command = set_command(COMMAND_READ_SINGLE_BLOCK, command_argument);    //set CMD17
 
     //prepare block for read
     memset(block->data, 0xff, 512);
@@ -45,7 +44,7 @@ uint8_t single_block_read(uint32_t index, block512_t* block)
 uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
-    set_command(command, COMMAND_READ_MULTIPLE_BLOCK, command_argument);    //set CMD18
+    mext2_command* command = set_command(COMMAND_READ_MULTIPLE_BLOCK, command_argument);    //set CMD18
 
     //prepare block for read
     memset(block->data, 0xff, 512 * blocks_number);
@@ -81,7 +80,7 @@ uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_nu
         return 1;
 
     memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
-    set_command(command, COMMAND_STOP_READ_DATA, command_argument);    //set CMD12
+    command = set_command(COMMAND_STOP_READ_DATA, command_argument);    //set CMD12
 
     response = send_command(command, MEXT2_R1b);
     if(response == NULL || response -> r1 != 0)
@@ -112,7 +111,6 @@ uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
         return 1;
     }
 
-    command = (mext2_command*)malloc(sizeof(mext2_command));
     uint8_t return_value;
 
     if(blocks_number == 1)
@@ -124,7 +122,6 @@ uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
         return_value = multiple_block_read(index,block,blocks_number);
     }
 
-    free(command);
     return return_value;
 }
 
@@ -135,7 +132,7 @@ uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
 uint8_t single_block_wite(uint32_t index, block512_t* block)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
-    set_command(command, COMMAND_WRITE_SINGLE_BLOCK, command_argument);    //set CMD24
+    mext2_command* command = set_command(COMMAND_WRITE_SINGLE_BLOCK, command_argument);    //set CMD24
 
     uint8_t buffer = 0xff;
     wait_8_clock_cycles(&buffer);
@@ -167,8 +164,8 @@ uint8_t single_block_wite(uint32_t index, block512_t* block)
 
 uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
-     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
-    set_command(command, COMMAND_WRITE_MULTIPLE_BLOCK, command_argument);    //set CMD25
+    uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
+    mext2_command* command = set_command(COMMAND_WRITE_MULTIPLE_BLOCK, command_argument);    //set CMD25
 
     uint8_t buffer = 0xff;
     wait_8_clock_cycles(&buffer);
@@ -200,7 +197,7 @@ uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_n
     wait_8_clock_cycles(&buffer);
 
     memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
-    set_command(command, COMMAND_STOP_READ_DATA, command_argument);    //set CMD12
+    command = set_command(COMMAND_STOP_READ_DATA, command_argument);    //set CMD12
 
     response = send_command(command, MEXT2_R1b);
     if(response == NULL || response -> r1 != 0)
@@ -229,7 +226,7 @@ uint8_t write_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
         return 1;
     }
 
-    command = (mext2_command*)malloc(sizeof(mext2_command));
+
     block512_t* block_to_write = malloc(sizeof(block512_t) * blocks_number);
     memcpy(block_to_write, block, sizeof(block512_t) * blocks_number);
 
@@ -244,7 +241,6 @@ uint8_t write_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
         return_value = multiple_block_write(index,block,blocks_number);
     }
 
-    free(command);
     free(block_to_write);
     return return_value;
 }

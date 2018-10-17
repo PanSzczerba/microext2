@@ -23,9 +23,9 @@ typedef enum mext2_response_type
 
 struct mext2_command
 {
-	uint8_t index;
-	uint8_t argument[COMMAND_ARGUMENT_SIZE];
-	uint8_t crc;
+    uint8_t index;
+    uint8_t argument[COMMAND_ARGUMENT_SIZE];
+    uint8_t crc;
 } __packed;
 typedef struct mext2_command mext2_command;
 
@@ -50,7 +50,7 @@ uint8_t calc_command_number(uint8_t number);
 mext2_response* send_command(mext2_command* command, mext2_response_type response_type);
 bool wait_for_response(uint8_t* buffer);
 void wait_8_clock_cycles(uint8_t* buffer);
-void set_command(mext2_command* command, uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE]);
+mext2_command* set_command(uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE]);
 
 uint8_t single_block_wite(uint32_t index, block512_t* block);
 uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number);
