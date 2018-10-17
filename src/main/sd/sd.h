@@ -47,7 +47,6 @@ typedef struct block512_t
 } block512_t;
 
 uint8_t calc_command_number(uint8_t number);
-uint8_t calc_crc7(uint8_t* buffer, uint8_t count);
 mext2_response* send_command(mext2_command* command, mext2_response_type response_type);
 bool wait_for_response(uint8_t* buffer);
 void wait_8_clock_cycles(uint8_t* buffer);
