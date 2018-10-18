@@ -5,15 +5,12 @@
 #include "command.h"
 
 STATIC bool sd_card_initialized = false;
-STATIC uint8_t sd_state;
 
 #define SD_NOT_DETERMINED   0
 #define SD_V1X              1
 #define SD_V2X              2
 #define SD_V2XHCXC          3
 
-STATIC uint8_t sd_version = SD_NOT_DETERMINED;
-STATIC bool check_sd_version = false;
 
 #define SD_INIT_OK              (uint8_t)0x00
 #define SD_INIT_NOK             (uint8_t)0x01
@@ -34,8 +31,8 @@ STATIC bool reset_software()
 {
     //set CMD0
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command* command = set_command(COMMAND_SOFTWARE_RESET, command_argument); 
-    mext2_response* response = send_command(command, MEXT2_R1);
+    mext2_command command = set_command(COMMAND_SOFTWARE_RESET, command_argument); 
+    mext2_response* response = send_command(&command, MEXT2_R1);
     if(response == NULL || response -> r1 != R1_IN_IDLE_STATE)
     {
         return false;
@@ -45,30 +42,30 @@ STATIC bool reset_software()
     return true;
 }
 
-STATIC bool check_voltage_range()
+STATIC bool check_voltage_range(uint8_t* sd_version)
 {
     //set CMD8
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
-    mext2_command* command = set_command(COMMAND_CHECK_VOLTAGE, command_argument); 
-    mext2_response* response = send_command(command, MEXT2_R7);
+    mext2_command command = set_command(COMMAND_CHECK_VOLTAGE, command_argument); 
+    mext2_response* response = send_command(&command, MEXT2_R7);
      if(response == NULL)
     {
         return false;
     }
 
     if(response -> r1 & R1_ILLEGAL_COMMAND)
-        sd_version = SD_V1X;
+        *sd_version = SD_V1X;
 
     wait_8_clock_cycles((uint8_t*) response);
     return true;
 }
 
-STATIC bool read_OCR()
+STATIC bool read_OCR(bool check_sd_version, uint8_t* sd_version)
 {
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command* command = set_command(COMMAND_READ_OCR, command_argument); 
-    mext2_response* response = send_command(command, MEXT2_R3);
+    mext2_command command = set_command(COMMAND_READ_OCR, command_argument); 
+    mext2_response* response = send_command(&command, MEXT2_R3);
     if(response == NULL || (response -> r1 & R1_ILLEGAL_COMMAND) == true)
     {
         return false;
@@ -77,9 +74,9 @@ STATIC bool read_OCR()
     if(check_sd_version)
     {
         if(response -> ocr[0] & (uint8_t)0x40)
-            sd_version = SD_V2XHCXC;
+            *sd_version = SD_V2XHCXC;
         else
-            sd_version = SD_V2X;
+            *sd_version = SD_V2X;
     }
 
     wait_8_clock_cycles((uint8_t*) response);
@@ -90,8 +87,8 @@ STATIC bool prepare_init_process()
 {
     //set CMD55
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command* command = set_command(COMMAND_BEFORE_INIT_PROCESS, command_argument); 
-    mext2_response* response = send_command(command, MEXT2_R1);
+    mext2_command command = set_command(COMMAND_BEFORE_INIT_PROCESS, command_argument); 
+    mext2_response* response = send_command(&command, MEXT2_R1);
     if(response == NULL || response -> r1 & R1_ILLEGAL_COMMAND)
     {
         return false;
@@ -104,8 +101,8 @@ STATIC uint8_t start_init_process()
 {
     //set ACMD41
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command* command = set_command(COMMAND_INIT_PROCESS, command_argument); 
-    mext2_response* response = send_command(command, MEXT2_R1);
+    mext2_command command = set_command(COMMAND_INIT_PROCESS, command_argument); 
+    mext2_response* response = send_command(&command, MEXT2_R1);
     if(response == NULL)
     {
         return 0;
@@ -119,8 +116,8 @@ STATIC bool read_CSD_register()
     uint8_t csd_register[16];
     //set CMD9
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command* command = set_command(COMMAND_READ_CSD, command_argument); 
-    mext2_response* response = send_command(command, MEXT2_R1);
+    mext2_command command = set_command(COMMAND_READ_CSD, command_argument); 
+    mext2_response* response = send_command(&command, MEXT2_R1);
     if(response == NULL)
     {
         return false;
@@ -150,7 +147,9 @@ STATIC bool read_CSD_register()
 
 uint8_t init()
 {
-    sd_state = SD_IDLE;
+    bool check_sd_version = false;
+    uint8_t sd_state = SD_IDLE;
+    uint8_t sd_version = SD_NOT_DETERMINED;
 
     while(1)
     {
@@ -211,7 +210,7 @@ uint8_t init()
 
             case SD_CHECK_VOLTAGE:
             {
-                if(check_voltage_range() == false)
+                if(check_voltage_range(&sd_version) == false)
                 {
                     mext2_error("Wrong voltage range.");
                     sd_state = SD_ERROR;
@@ -221,7 +220,7 @@ uint8_t init()
 
             case SD_READ_OCR:
             {
-                if(read_OCR() == false)
+                if(read_OCR(check_sd_version, &sd_version) == false)
                 {
                     mext2_error("Cannot read OCR.");
                     sd_state = SD_ERROR;
@@ -258,7 +257,7 @@ uint8_t init()
                 if(sd_version != SD_V1X)
                 {
                     check_sd_version = true;
-                    if(read_OCR() == false)
+                    if(read_OCR(check_sd_version, &sd_version) == false)
                     {
                         mext2_error("Cannot read OCR.");
                         sd_state = SD_ERROR;

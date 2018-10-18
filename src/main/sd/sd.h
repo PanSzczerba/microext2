@@ -46,8 +46,7 @@ typedef struct block512_t
     uint8_t data[512];
 } block512_t;
 
-
 uint8_t init();
-uint8_t single_block_wite(uint32_t index, block512_t* block);
-uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number);
+uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block);
+uint8_t write_blocks(uint8_t blocks_number, uint32_t index, block512_t* block);
 #endif
