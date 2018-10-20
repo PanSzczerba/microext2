@@ -31,7 +31,7 @@ out/%/: # Rule for dirs
 	$E$(MKDIR) -p $@
 
 ########### ALL ##############
-all: lib sd
+all: lib test
 
 ########### COMMON ###########
 COMMONDIR = $(MAINDIR)/common
@@ -80,46 +80,28 @@ out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 
 
 ########### SD ##############
+SDDIR := $(MAINDIR)/sd
+OBJS += out/$(SDDIR)/sd.a
+INCLUDE += -Isrc/$(SDDIR)
 
-sd: out/main/sd/sd.a
+out/$(SDDIR)/sd.a: out/$(SDDIR)/common.o out/$(SDDIR)/init.o out/$(SDDIR)/rw.o
+	@$(call print, AR, $(@))
+	$E$(AR) rcs $@ $^
 
-out/main/sd/sd.a:out/main/sd/common.o out/main/sd/init.o out/main/sd/rw.o
-	@echo ----make sd lib
-	$(AR) rcs $@ $^
+out/$(SDDIR)/common.o: src/$(SDDIR)/command.c src/$(SDDIR)/command.h src/$(SDDIR)/sd.h | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/main/sd/common.o: src/main/sd/command.c src/main/sd/command.h src/main/sd/sd.h | out/main/sd
-	@echo ----make sd command
-	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
+out/$(SDDIR)/init.o: src/$(SDDIR)/init.c src/$(SDDIR)/sd.h | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE)
 
-out/main/sd/init.o: src/main/sd/init.c src/main/sd/sd.h | out/main/sd
-	@echo ----make sd init
-	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
-
-out/main/sd/rw.o: src/main/sd/rw.c src/main/sd/sd.h | out/main/sd
-	@echo ----make sd rw
-	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
-
-out/main/sd:
-	$(MKDIR) -p out/main/sd
+out/$(SDDIR)/rw.o: src/$(SDDIR)/rw.c src/$(SDDIR)/sd.h | $$(@D)/
+	@$(call print, CC, $(@))
+	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE)
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so
-
-# SD 
-out/main/sd/sd.a:out/main/sd/common.o out/main/sd/init.o out/main/sd/rw.o
-	$(AR) rcs $@ $^
-
-out/main/sd/common.o: src/main/sd/common.c src/main/sd/sd.h | out/main/sd
-	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
-
-out/main/sd/init.o: src/main/sd/init.c src/main/sd/sd.h | out/main/sd
-	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
-
-out/main/sd/rw.o: src/main/sd/rw.c src/main/sd/sd.h | out/main/sd
-	$(CC) -c -o $@ $< $(INCLUDE) $(CFLAGS)
-
-out/main/sd:
-	$(MKDIR) -p out/main/sd
 
 out/$(MAINDIR)/libmext2.so: $(OBJS)
 	@$(call print, LD, $(@))
