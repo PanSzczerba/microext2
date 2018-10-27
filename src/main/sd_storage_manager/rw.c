@@ -1,10 +1,11 @@
-#include "sd.h"
+#include "sd_storage_manager.h"
 #include "debug.h"
 #include "pin.h"
 #include "spi.h"
 #include "command.h"
+#include "common.h"
 
-STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
+STATIC mext2_return_value single_block_read(uint32_t index, block512_t* block)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command command = set_command(COMMAND_READ_SINGLE_BLOCK, command_argument);    //set CMD17
@@ -19,16 +20,16 @@ STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
     if(response == NULL || response -> r1 != 0)
     {
         mext2_error("Can't read block");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
     if(wait_for_response((uint8_t*)response) == false)
-        return 1;
+        return MRXT2_RETURN_FAILURE;
 
     if(response -> r1 != 0xfe)
     {
         mext2_error("Received wrong data token");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
     spi_read_write(block->data, 512);
@@ -37,10 +38,10 @@ STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
     wait_8_clock_cycles(&buffer);
     wait_8_clock_cycles(&buffer);
 
-    return 0;
+    return MRXT2_RETURN_SUCCESS;
 }
 
-STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC mext2_return_value multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command command = set_command(COMMAND_READ_MULTIPLE_BLOCK, command_argument);    //set CMD18
@@ -55,18 +56,18 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t bl
     if(response == NULL || response -> r1 != 0)
     {
         mext2_error("Can't read block");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
     for(uint8_t i = 0; i < blocks_number; i++)
     {
         if(wait_for_response((uint8_t*)response) == false)
-            return 1;
+            return MRXT2_RETURN_FAILURE;
 
         if(response -> r1 != 0xfe)
         {
             mext2_error("Received wrong data token");
-            return 1;
+            return MRXT2_RETURN_FAILURE;
         }
 
         spi_read_write(block[i].data, 512);
@@ -76,7 +77,7 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t bl
     }
 
     if(wait_for_response((uint8_t*)response) == false)
-        return 1;
+        return MRXT2_RETURN_FAILURE;
 
     memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
     command = set_command(COMMAND_STOP_READ_DATA, command_argument);    //set CMD12
@@ -85,7 +86,7 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t bl
     if(response == NULL || response -> r1 != 0)
     {
         mext2_error("Can't read block");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
     wait_8_clock_cycles(&buffer);
@@ -97,27 +98,23 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t bl
     }
 
     wait_8_clock_cycles(&buffer);
-    return 0;
+    return MRXT2_RETURN_SUCCESS;
 }
 
-uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
+mext2_return_value read_blocks(mext2_sd_storage_manager* sd_storage_manager, uint8_t blocks_number, uint32_t index, block512_t* block)
 {
     if(blocks_number < 1)
     {
         mext2_error("Can't read 0 blocks.");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
-    uint8_t return_value;
+    mext2_return_value return_value;
 
     if(blocks_number == 1)
-    {
         return_value = single_block_read(index, block);
-    }
     else
-    {
         return_value = multiple_block_read(index,block,blocks_number);
-    }
 
     return return_value;
 }
@@ -126,7 +123,7 @@ uint8_t read_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
 
 //////////////////////////////////////////////////////
 
-STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
+STATIC mext2_return_value single_block_wite(uint32_t index, block512_t* block)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command command = set_command(COMMAND_WRITE_SINGLE_BLOCK, command_argument);    //set CMD24
@@ -138,7 +135,7 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
     if(response == NULL || response -> r1 != 0)
     {
         mext2_error("Can't write block.");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
     wait_8_clock_cycles(&buffer);
@@ -148,7 +145,7 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
 
     wait_8_clock_cycles(&buffer);
     if(wait_for_response((uint8_t*) response) == false)
-        return 1;
+        return MRXT2_RETURN_FAILURE;
 
     response -> r1 = 0;
     while(response -> r1 != 0xff)
@@ -156,10 +153,10 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
         response -> r1 = 0xff;
         spi_read_write((uint8_t*) response, 1);
     }
-    return 0;
+    return MRXT2_RETURN_SUCCESS;
 }
 
-STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC mext2_return_value multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     uint8_t command_argument[] = {(uint8_t)(index >> 24), (uint8_t)(index >> 16), (uint8_t)(index >> 8), (uint8_t)index};
     mext2_command command = set_command(COMMAND_WRITE_MULTIPLE_BLOCK, command_argument);    //set CMD25
@@ -171,7 +168,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t b
     if(response == NULL || response -> r1 != 0)
     {
         mext2_error("Can't write block.");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
     for(uint8_t i = 0; i < blocks_number; i++)
@@ -181,7 +178,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t b
         spi_read_write(block[i].data, 512);
 
         if(wait_for_response((uint8_t*) response) == false)
-            return 1;
+            return MRXT2_RETURN_FAILURE;
 
         response -> r1 = 0;
         while(response -> r1 == 0)
@@ -200,7 +197,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t b
     if(response == NULL || response -> r1 != 0)
     {
         mext2_error("Can't read block.");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
 
     response -> r1 = 0;
@@ -211,18 +208,17 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t b
     }
 
     wait_8_clock_cycles(&buffer);
-    return 0;
+    return MRXT2_RETURN_SUCCESS;
 }
 
 
-uint8_t write_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
+mext2_return_value write_blocks(mext2_sd_storage_manager* sd_storage_manager, uint8_t blocks_number, uint32_t index, block512_t* block)
 {
     if(blocks_number < 1)
     {
         mext2_error("Can't write 0 blocks.");
-        return 1;
+        return MRXT2_RETURN_FAILURE;
     }
-
 
     block512_t* block_to_write = malloc(sizeof(block512_t) * blocks_number);
     memcpy(block_to_write, block, sizeof(block512_t) * blocks_number);
@@ -230,13 +226,9 @@ uint8_t write_blocks(uint8_t blocks_number, uint32_t index, block512_t* block)
     uint8_t return_value;
 
     if(blocks_number == 1)
-    {
         return_value = single_block_wite(index, block_to_write);
-    }
     else
-    {
         return_value = multiple_block_write(index,block,blocks_number);
-    }
 
     free(block_to_write);
     return return_value;

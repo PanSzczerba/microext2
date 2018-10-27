@@ -1,4 +1,4 @@
-#include "sd.h"
+#include "sd_storage_manager.h"
 #include "spi.h"
 #include "crc.h"
 #include "command.h"
@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bool wait_for_response(uint8_t* buffer)
+uint8_t wait_for_response(uint8_t* buffer)
 {
     uint16_t i;
     buffer[0] = 0xff;
@@ -22,10 +22,9 @@ bool wait_for_response(uint8_t* buffer)
     if(i == N_CYCLES_TIMEOUT)
     {
         mext2_error("Error: exceeded time limit waiting for response, check your SD card reader device.");
-        return false;
+        return NOK;
     }
-
-    return true;
+    return OK;
 }
  
 mext2_command set_command(uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE])
@@ -52,9 +51,7 @@ mext2_response* send_command(mext2_command* command, mext2_response_type respons
         return NULL;
     
     if(response_type == MEXT2_R7 || response_type == MEXT2_R3)
-    {
         spi_read_write(&buffer[1], 4);
-    }
     mext2_response* response = (mext2_response*)buffer;
 
     return response;

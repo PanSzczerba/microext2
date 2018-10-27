@@ -1,12 +1,14 @@
 #ifndef MEXT2_COMMON_H
 #define MEXT2_COMMON_H
 
-// boolean values
-#define TRUE 1
-#define FALSE 0
-
 #define STATIC static
 
-#define __packed __attribute__((packed))
+#define __mext2_packed __attribute__((packed))
+
+typedef enum mext2_return_value
+{
+    MRXT2_RETURN_SUCCESS,
+    MRXT2_RETURN_FAILURE
+} mext2_return_value;
 
 #endif

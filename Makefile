@@ -79,24 +79,24 @@ out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 
 
-########### SD ##############
-SDDIR := $(MAINDIR)/sd
-OBJS += out/$(SDDIR)/sd.a
-INCLUDE += -Isrc/$(SDDIR)
+########### SDSM ##############
+SDSMDIR := $(MAINDIR)/sd_storage_manager
+OBJS += out/$(SDSMDIR)/sd_storage_manager.a
+INCLUDE += -Isrc/$(SDSMDIR)
 
-out/$(SDDIR)/sd.a: out/$(SDDIR)/common.o out/$(SDDIR)/init.o out/$(SDDIR)/rw.o
+out/$(SDSMDIR)/sd_storage_manager.a: out/$(SDSMDIR)/common.o out/$(SDSMDIR)/init.o out/$(SDSMDIR)/rw.o
 	@$(call print, AR, $(@))
 	$E$(AR) rcs $@ $^
 
-out/$(SDDIR)/common.o: src/$(SDDIR)/command.c src/$(SDDIR)/command.h src/$(SDDIR)/sd.h | $$(@D)/
+out/$(SDSMDIR)/common.o: src/$(SDSMDIR)/command.c src/$(SDSMDIR)/command.h src/$(SDSMDIR)/sd_storage_manager.h | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/$(SDDIR)/init.o: src/$(SDDIR)/init.c src/$(SDDIR)/sd.h | $$(@D)/
+out/$(SDSMDIR)/init.o: src/$(SDSMDIR)/init.c src/$(SDSMDIR)/sd_storage_manager.h | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE)
 
-out/$(SDDIR)/rw.o: src/$(SDDIR)/rw.c src/$(SDDIR)/sd.h | $$(@D)/
+out/$(SDSMDIR)/rw.o: src/$(SDSMDIR)/rw.c src/$(SDSMDIR)/sd_storage_manager.h | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE)
 
