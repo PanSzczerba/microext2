@@ -32,9 +32,9 @@ uint8_t wait_for_response(uint8_t* buffer)
     if(i >= N_CYCLES_TIMEOUT)
     {
         mext2_error("Error: exceeded time limit waiting for response, check your SD card reader device.");
-        return NOK;
+        return MEXT2_RETURN_FAILURE;
     }
-    return OK;
+    return MEXT2_RETURN_SUCCESS;
 }
 
 void wait_8_clock_cycles_with_buffer(uint8_t* buffer)

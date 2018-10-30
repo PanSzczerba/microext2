@@ -12,8 +12,8 @@
 
 typedef enum mext2_return_value
 {
-    MEXT2_RETURN_SUCCESS,
-    MEXT2_RETURN_FAILURE
+    MEXT2_RETURN_FAILURE = 0,
+    MEXT2_RETURN_SUCCESS
 } mext2_return_value;
 
 #endif
