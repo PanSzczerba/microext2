@@ -1,9 +1,10 @@
-#include "sd_storage_manager.h"
 #include "debug.h"
 #include "pin.h"
+#include "timing.h"
 #include "spi.h"
 #include "command.h"
 #include "common.h"
+#include "sd.h"
 
 #define SD_INIT_OK              (uint8_t)0x00
 #define SD_INIT_NOK             (uint8_t)0x01
@@ -24,80 +25,72 @@ STATIC uint8_t reset_software()
 {
     //set CMD0
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command command = set_command(COMMAND_SOFTWARE_RESET, command_argument); 
-    mext2_response* response = send_command(&command, MEXT2_R1);
+    mext2_response response = mext2_send_command(COMMAND_SOFTWARE_RESET, command_argument);
 
-    if(response == NULL || response -> r1 != R1_IN_IDLE_STATE)
-        return NOK;
+    if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != R1_IN_IDLE_STATE)
+        return MEXT2_RETURN_FAILURE;
 
-    wait_8_clock_cycles((uint8_t*) response);
-    return OK;
+    return MEXT2_RETURN_SUCCESS;
 }
 
-STATIC uint8_t check_voltage_range(mext2_sd_storage_manager* sd_storage_manager)
+STATIC uint8_t check_voltage_range(mext2_sd* sd)
 {
     //set CMD8
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
-    mext2_command command = set_command(COMMAND_CHECK_VOLTAGE, command_argument); 
-    mext2_response* response = send_command(&command, MEXT2_R7);
+    mext2_response response = mext2_send_command(COMMAND_CHECK_VOLTAGE, command_argument);
 
-    if(response == NULL)
-        return NOK;
+    if(response.r1 & R1_INVALID_RESPONSE)
+        return MEXT2_RETURN_FAILURE;
 
-    if(response -> r1 & R1_ILLEGAL_COMMAND)
-        sd_storage_manager -> sd_version = SD_V1X;
+    if(response.r1 & R1_ILLEGAL_COMMAND)
+        sd -> sd_version = SD_V1X;
 
-    wait_8_clock_cycles((uint8_t*) response);
-    return OK;
+    return MEXT2_RETURN_SUCCESS;
 }
 
-STATIC uint8_t read_OCR(mext2_sd_storage_manager* sd_storage_manager)
+STATIC uint8_t read_OCR(mext2_sd* sd)
 {
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command command = set_command(COMMAND_READ_OCR, command_argument); 
-    mext2_response* response = send_command(&command, MEXT2_R3);
+    mext2_response response = mext2_send_command(COMMAND_READ_OCR, command_argument);
 
-    if(response == NULL || (response -> r1 & R1_ILLEGAL_COMMAND) == true)
-        return NOK;
+    if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
+        return MEXT2_RETURN_FAILURE;
 
-    if(sd_storage_manager -> sd_version == SD_NOT_DETERMINED)
+    if(sd -> sd_version == SD_NOT_DETERMINED)
     {
-        if(response -> ocr[0] & (uint8_t)0x40)
-            sd_storage_manager -> sd_version = SD_V2XHCXC;
+        if(response.ocr[0] & (uint8_t)0x40)
+            sd -> sd_version = SD_V2XHCXC;
         else
-            sd_storage_manager -> sd_version = SD_V2X;
+            sd -> sd_version = SD_V2X;
     }
 
-    wait_8_clock_cycles((uint8_t*) response);
-    return OK;
+    return MEXT2_RETURN_SUCCESS;
 }
 
 STATIC uint8_t prepare_init_process()
 {
     //set CMD55
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command command = set_command(COMMAND_BEFORE_INIT_PROCESS, command_argument); 
-    mext2_response* response = send_command(&command, MEXT2_R1);
+    mext2_response response = mext2_send_command(COMMAND_BEFORE_INIT_PROCESS, command_argument);
 
-    if(response == NULL || response -> r1 & R1_ILLEGAL_COMMAND)
-        return NOK;
+    if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND))
+        return MEXT2_RETURN_FAILURE;
 
-    wait_8_clock_cycles((uint8_t*) response);
-    return OK;
+    return MEXT2_RETURN_SUCCESS;
 }
 
 STATIC uint8_t start_init_process()
 {
     //set ACMD41
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command command = set_command(COMMAND_INIT_PROCESS, command_argument); 
-    mext2_response* response = send_command(&command, MEXT2_R1);
+    mext2_response response = mext2_send_command(COMMAND_INIT_PROCESS, command_argument);
 
-    if(response == NULL)
-        return 0;
+    if(response.r1 & R1_IN_IDLE_STATE)
+        return MEXT2_RETURN_SUCCESS;
+    else
+        return MEXT2_RETURN_FAILURE;
 
-    return response -> r1;
 }
 
 STATIC uint8_t read_CSD_register()
@@ -106,19 +99,18 @@ STATIC uint8_t read_CSD_register()
 
     //set CMD9
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
-    mext2_command command = set_command(COMMAND_READ_CSD, command_argument); 
-    mext2_response* response = send_command(&command, MEXT2_R1);
+    mext2_response response = mext2_send_command(COMMAND_READ_CSD, command_argument);
 
-    if(response == NULL)
-        return NOK;
+    if(response.r1 & R1_INVALID_RESPONSE)
+        return MEXT2_RETURN_FAILURE;
 
-    if(response -> r1 != 0)
+    if(response.r1 != 0)
         mext2_warning("Reading CSD register failed\n");
     else
     {
         uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
-        if(wait_for_response(buffer) == false) 
-            return NOK;
+        if(!wait_for_response(buffer))
+            return MEXT2_RETURN_FAILURE;
 
         memset(csd_register, 0xff, 16);
         spi_read_write(csd_register, 16);
@@ -127,14 +119,13 @@ STATIC uint8_t read_CSD_register()
         spi_read_write(buffer, 2);
     }
 
-    wait_8_clock_cycles((uint8_t*) response);
-    return OK;
+    return MEXT2_RETURN_SUCCESS;
 }
 
-mext2_return_value mmext2_init(mext2_sd_storage_manager* sd_storage_manager)
+mext2_return_value mext2_sd_init(mext2_sd* sd)
 {
     uint8_t sd_state = SD_IDLE;
-    sd_storage_manager ->  sd_version = SD_NOT_DETERMINED;
+    sd ->  sd_version = SD_NOT_DETERMINED;
 
     while(1)
     {
@@ -143,26 +134,28 @@ mext2_return_value mmext2_init(mext2_sd_storage_manager* sd_storage_manager)
             case SD_ERROR:
             {
                 reset_pins();
-                sd_storage_manager -> sd_initialized = FALSE;
-                return MRXT2_RETURN_FAILURE;
+                sd -> sd_initialized = FALSE;
+                return MEXT2_RETURN_FAILURE;
             }
+            break;
 
             case SD_INITIALIZED:
             {
-                sd_storage_manager -> sd_initialized = TRUE;
-                return MRXT2_RETURN_SUCCESS;
+                sd -> sd_initialized = TRUE;
+                return MEXT2_RETURN_SUCCESS;
             }
+            break;
 
             case SD_IDLE:
             {
-                if(sd_storage_manager -> sd_initialized == TRUE) 
+                if(sd -> sd_initialized == TRUE)
                     {
                         mext2_log("Card already initialized.");
                         sd_state = SD_INITIALIZED;
-                        break;
                     }
                     else sd_state = SD_CONFIGURE_PINS;
             }
+            break;
 
             case SD_CONFIGURE_PINS:
             {
@@ -170,100 +163,96 @@ mext2_return_value mmext2_init(mext2_sd_storage_manager* sd_storage_manager)
                 {
                     mext2_error("Pin initialization failed.");
                     sd_state = SD_ERROR;
-                    break;
                 }
                 else sd_state = SD_RESET_SOFTWARE;
             }
+            break;
 
             case SD_RESET_SOFTWARE:
             {
                 //usleep(1000);  //wait 1ms
-                sleep(1);
-                digitalWrite(MEXT2_MOSI, MEXT2_HIGH);
+                mext2_delay(1000);
+                mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
 
                 for(uint8_t i = 0; i < 74; i++) //74 dummy clock cycles
                 {
-                    digitalWrite(MEXT2_SCLK, MEXT2_HIGH);
-                    digitalWrite(MEXT2_SCLK, MEXT2_LOW);
+                    mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
+                    mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
                 }
 
-                if(reset_software() == NOK)
+                if(reset_software() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Not an SD card.");
                     sd_state = SD_ERROR;
-                    break;
                 } else sd_state = SD_CHECK_VOLTAGE;
             }
+            break;
 
             case SD_CHECK_VOLTAGE:
             {
-                if(check_voltage_range(sd_storage_manager) == NOK)
+                if(check_voltage_range(sd) == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Wrong voltage range.");
                     sd_state = SD_ERROR;
-                    break;
                 } else 
                     sd_state = SD_READ_OCR;
             }
+            break;
 
             case SD_READ_OCR:
             {
-                if(read_OCR(sd_storage_manager) == NOK)
+                if(read_OCR(sd) == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Cannot read OCR.");
                     sd_state = SD_ERROR;
-                    break;
                 } else sd_state = SD_PREPARE_INIT_PROCESS;
             }
+            break;
 
             case SD_PREPARE_INIT_PROCESS:
             {
-                if(prepare_init_process() == NOK)
+                if(prepare_init_process() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Cannot prepare for initialization process.");
                     reset_pins();
                     sd_state = SD_ERROR;
-                    break;
                 } else sd_state = SD_START_INIT_PROCESS;
             }
+            break;
 
             case SD_START_INIT_PROCESS:
             {
-                uint8_t response = start_init_process();
-                if(response & R1_IN_IDLE_STATE)
-                {
+                if(start_init_process())
                     sd_state = SD_PREPARE_INIT_PROCESS;
-                    response = 0xff;
-                    wait_8_clock_cycles(&response); // after response wait for 8 clock cycles (for safety)
-                    break;
-                }
-                else sd_state = SD_READ_OCR_AGAIN;
+                else
+                    sd_state = SD_READ_OCR_AGAIN;
             }
+            break;
 
             case SD_READ_OCR_AGAIN:
             {
-                if(sd_storage_manager -> sd_version == SD_NOT_DETERMINED)
+                if(sd -> sd_version == SD_NOT_DETERMINED)
                 {
-                    if(read_OCR(sd_storage_manager) == NOK)
+                    if(read_OCR(sd) == MEXT2_RETURN_FAILURE)
                     {
                         mext2_error("Cannot read OCR.");
                         sd_state = SD_ERROR;
-                        break;
                     }
                 }
-                sd_state = SD_READ_CSD;
+                else sd_state = SD_READ_CSD;
             }
+            break;
 
             case SD_READ_CSD:
             {
-                if(read_CSD_register() == NOK)
+                if(read_CSD_register() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Cannot read CSD register.");
                     reset_pins();
                     sd_state = SD_ERROR;
-                    break;
                 } else sd_state = SD_INITIALIZED;
             }
+            break;
 
             default:
             {   sd_state = SD_ERROR;

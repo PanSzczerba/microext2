@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "common.h"
 
 enum mext2_return_value;
 
@@ -24,13 +25,13 @@ typedef enum mext2_sd_version
     SD_V2XHCXC
 } mext2_sd_version;
 
-typedef struct mext2_sd_storage_manager
+typedef struct mext2_sd
 {
     mext2_sd_version sd_version;
     uint8_t sd_initialized;
-} mext2_sd_storage_manager;
+} mext2_sd;
 
-enum mext2_return_value mmext2_init(mext2_sd_storage_manager* sd_storage_manager);
-enum mext2_return_value read_blocks(mext2_sd_storage_manager* sd_storage_manager, uint8_t blocks_number, uint32_t index, block512_t* block);
-enum mext2_return_value write_blocks(mext2_sd_storage_manager* sd_storage_manager, uint8_t blocks_number, uint32_t index, block512_t* block);
+enum mext2_return_value mext2_sd_init(mext2_sd* sd);
+enum mext2_return_value mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number);
+enum mext2_return_value mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number);
 #endif

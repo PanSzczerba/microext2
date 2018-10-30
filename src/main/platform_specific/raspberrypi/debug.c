@@ -3,7 +3,7 @@
 #include "common.h"
 
 STATIC uint8_t mext2_log_level = WARNING;
-STATIC uint8_t mext2_is_log_file_initialized = FALSE;
+STATIC uint8_t mext2_is_log_file_initialized = MEXT2_FALSE;
 STATIC FILE* mext2_log_file = NULL;
 
 char* mext2_level2string[] =
@@ -23,7 +23,7 @@ void mext2_set_log_file(FILE* file)
 {
     mext2_log_file = file;
     if(!mext2_is_log_file_initialized)
-        mext2_is_log_file_initialized = TRUE;
+        mext2_is_log_file_initialized = MEXT2_TRUE;
 }
 
 void mext2_set_log_level(uint8_t level)

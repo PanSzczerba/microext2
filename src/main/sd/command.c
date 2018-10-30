@@ -1,4 +1,3 @@
-#include "sd_storage_manager.h"
 #include "spi.h"
 #include "crc.h"
 #include "command.h"
@@ -8,62 +7,111 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "sd.h"
+
+enum response_type
+{
+    R1,
+    R1b,
+    R2,
+    R3,
+    R7
+};
+
 
 uint8_t wait_for_response(uint8_t* buffer)
 {
     uint16_t i;
-    buffer[0] = 0xff;
-    for(i = 0; i < N_CYCLES_TIMEOUT && buffer[0] == 0xff; i++)
+    *buffer = 0xff;
+    for(i = 0; i < N_CYCLES_TIMEOUT && *buffer == 0xff; i++)
     {
-        buffer[0] = 0xff;
+        *buffer = 0xff;
         spi_read_write(buffer, 1);
     }
 
-    if(i == N_CYCLES_TIMEOUT)
+    if(i >= N_CYCLES_TIMEOUT)
     {
         mext2_error("Error: exceeded time limit waiting for response, check your SD card reader device.");
         return NOK;
     }
     return OK;
 }
+
+void wait_8_clock_cycles_with_buffer(uint8_t* buffer)
+{
+    spi_read_write(buffer, 1);
+}
+
+void wait_8_clock_cycles()
+{
+    uint8_t dummy = 0xff;
+    spi_read_write(&dummy, 1);
+}
+
+STATIC enum response_type get_response_type(uint8_t command_number)
+{
+    switch(command_number)
+    {
+    case COMMAND_SOFTWARE_RESET:
+        return R1;
+    case COMMAND_CHECK_VOLTAGE:
+        return R7;
+    case COMMAND_READ_OCR:
+        return R3;
+    case COMMAND_BEFORE_INIT_PROCESS:
+        return R1;
+    case COMMAND_INIT_PROCESS:
+        return R1;
+    case COMMAND_READ_CSD:
+        return R1;
+    case COMMAND_READ_SINGLE_BLOCK:
+        return R1;
+    case COMMAND_READ_MULTIPLE_BLOCK:
+        return R1;
+    case COMMAND_WRITE_SINGLE_BLOCK:
+        return R1;
+    case COMMAND_WRITE_MULTIPLE_BLOCK:
+        return R1;
+    case COMMAND_STOP_READ_DATA:
+        return R1b;
+    default:
+        return R1;
+    }
+}
+
+STATIC uint8_t calc_command_number(uint8_t number)
+{
+    return (number | 0x40);
+}
+
  
-mext2_command set_command(uint8_t command_name, uint8_t command_argument[COMMAND_ARGUMENT_SIZE])
+STATIC void set_command(mext2_command* command, uint8_t command_number, uint8_t command_argument[COMMAND_ARGUMENT_SIZE])
+{
+    command->index = calc_command_number(command_number);
+    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
+        command->argument[i] = command_argument[i];
+    command->crc = (((crc7((uint8_t*)command, COMMAND_SIZE - sizeof(uint8_t))) << 1) | 1);
+}
+
+mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argument[COMMAND_ARGUMENT_SIZE])
 {
     mext2_command command;
-    command.index = calc_command_number(command_name);
-    for(uint8_t i = 0; i < COMMAND_ARGUMENT_SIZE; i++)
-        command.argument[i] = command_argument[i];
-    command.crc = crc7((uint8_t*)&command, COMMAND_SIZE - sizeof(uint8_t));
-    return command;
-}
+    set_command(&command, command_number, command_argument);
+    spi_read_write((uint8_t*) &command, COMMAND_SIZE);
 
-mext2_response* send_command(mext2_command* command, mext2_response_type response_type)
-{
-    uint8_t* c = (uint8_t*)command;
-    spi_read_write(c, COMMAND_SIZE);
+    enum response_type response_type = get_response_type(command_number);
 
-    uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
+    mext2_response response = {0xff, { 0xff, 0xff, 0xff, 0xff } };
 
-    if(response_type == MEXT2_R1b)
-        wait_8_clock_cycles(buffer);
+    if(response_type == R1b)
+        wait_8_clock_cycles();
 
-    if(wait_for_response(buffer) == false)
-        return NULL;
-    
-    if(response_type == MEXT2_R7 || response_type == MEXT2_R3)
-        spi_read_write(&buffer[1], 4);
-    mext2_response* response = (mext2_response*)buffer;
+    if(wait_for_response((uint8_t*) &response))
+    {
+        if(response_type == R7 || response_type == R3)
+            spi_read_write((uint8_t*) response.ocr, 4);
+        wait_8_clock_cycles();
+    }
 
     return response;
-}
-
-uint8_t calc_command_number(uint8_t number)
-{
-    return (number || 0x40);
-}
-
-void wait_8_clock_cycles(uint8_t* buffer)
-{
-    buffer[0] = 0xff;
-    spi_read_write(buffer, 1); // after R1 response wait for 8 clock cycles (for safety)
 }

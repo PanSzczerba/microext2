@@ -5,10 +5,15 @@
 
 #define __mext2_packed __attribute__((packed))
 
+
+// Boolean values
+#define MEXT2_TRUE 1
+#define MEXT2_FALSE 0
+
 typedef enum mext2_return_value
 {
-    MRXT2_RETURN_SUCCESS,
-    MRXT2_RETURN_FAILURE
+    MEXT2_RETURN_SUCCESS,
+    MEXT2_RETURN_FAILURE
 } mext2_return_value;
 
 #endif
