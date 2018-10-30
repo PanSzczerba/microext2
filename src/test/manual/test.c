@@ -39,7 +39,7 @@ mext2_sd sd;
 int main(void)
 {
     int return_value = mext2_sd_init(&sd);
-    mext2_set_log_level(DEBUG);
+    mext2_set_log_level(INFO);
     switch(return_value)
     {
     case MEXT2_RETURN_FAILURE:
@@ -49,5 +49,6 @@ int main(void)
         printf("SD initialization success\n");
         break;
     }
+    printf("%d\n", sd.sd_version);
     display_blocks(&sd, 0, 1);
 }
