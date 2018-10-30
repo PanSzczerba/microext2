@@ -86,10 +86,13 @@ STATIC uint8_t start_init_process()
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     mext2_response response = mext2_send_command(COMMAND_INIT_PROCESS, command_argument);
 
-    if(response.r1 & R1_IN_IDLE_STATE)
-        return MEXT2_RETURN_SUCCESS;
-    else
+    if(response.r1 & R1_INVALID_RESPONSE)
         return MEXT2_RETURN_FAILURE;
+
+    if(response.r1 & R1_IN_IDLE_STATE)
+        return MEXT2_RETURN_FAILURE;
+    else
+        return MEXT2_RETURN_SUCCESS;
 
 }
 
@@ -223,9 +226,9 @@ mext2_return_value mext2_sd_init(mext2_sd* sd)
             case SD_START_INIT_PROCESS:
             {
                 if(start_init_process())
-                    sd_state = SD_PREPARE_INIT_PROCESS;
-                else
                     sd_state = SD_READ_OCR_AGAIN;
+                else
+                    sd_state = SD_PREPARE_INIT_PROCESS;
             }
             break;
 

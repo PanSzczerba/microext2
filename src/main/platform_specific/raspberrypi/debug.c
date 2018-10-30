@@ -1,7 +1,7 @@
 #include "debug.h"
 #include "common.h"
 
-#define MAX_MESSAGE_LEN 50
+#define MAX_MESSAGE_LEN 128
 
 STATIC uint8_t mext2_log_level = WARNING;
 STATIC uint8_t mext2_is_log_file_initialized = MEXT2_FALSE;
