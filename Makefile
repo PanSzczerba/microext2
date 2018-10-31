@@ -44,9 +44,6 @@ INCLUDE = -Isrc/$(COMMONDIR)
 OBJS += out/$(COMMONDIR)/endianess.o
 
 out/$(COMMONDIR)/endianess.o: $(addprefix src/$(COMMONDIR)/, endianess.c common.h) | $$(@D)/
-#	@$(call print, CC, $(@))
-#	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
-
 
 ###### PLATFORM SPECIFIC #####
 
@@ -65,7 +62,8 @@ ifeq ($(strip $(USE_LOGS)), 1)
 	CFLAGS += -DMEXT2_MSG_DEBUG
 	OBJS += out/$(PLATFORMDIR)/debug.o
 
-out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h) | $$(@D)/
+out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h)\
+ src/$(COMMONDIR)/common.h | $$(@D)/
 endif
 
 ########### SPI ##############
@@ -73,7 +71,8 @@ SPIDIR := $(MAINDIR)/spi
 OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
-out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h) $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) | $$(@D)/
+out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h)\
+ $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) | $$(@D)/
 
 ########### CRC ##############
 CRCDIR := $(MAINDIR)/crc
@@ -87,11 +86,15 @@ SDDIR := $(MAINDIR)/sd
 OBJS += $(addprefix out/$(SDDIR)/, $(patsubst %.c,%.o, $(notdir $(wildcard src/$(SDDIR)/*.c))))
 INCLUDE += -Isrc/$(SDDIR)
 
-out/$(SDDIR)/command.o: $(addprefix src/$(SDDIR)/, command.c command.h sd.h) | $$(@D)/
+out/$(SDDIR)/command.o: $(addprefix src/$(SDDIR)/, command.c command.h sd.h)\
+ src/$(COMMONDIR)/common.h $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h timing.h)\
+ src/$(CRCDIR)/crc.h | $$(@D)/
 
-out/$(SDDIR)/init.o: $(addprefix src/$(SDDIR)/, init.c sd.h) | $$(@D)/
+out/$(SDDIR)/init.o: $(addprefix src/$(SDDIR)/, init.c sd.h) src/$(COMMONDIR)/common.h\
+ $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h timing.h)| $$(@D)/
 
-out/$(SDDIR)/rw.o: $(addprefix src/$(SDDIR)/, rw.c sd.h) | $$(@D)/
+out/$(SDDIR)/rw.o: $(addprefix src/$(SDDIR)/, rw.c sd.h) src/$(COMMONDIR)/common.h\
+ $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h) src/$(SPIDIR)/spi.h | $$(@D)/
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so
@@ -107,7 +110,6 @@ TESTDIR_ENDIANESS := $(TESTDIR)/endianess
 TESTLIBS := -lcunit 
 TEST_INCLUDE := 
 
-#TESTOBJS := out/$(TESTDIR_CRC)/crc_test.o
 
 TEST_BINS = out/$(TESTDIR_CRC)/test out/$(TESTDIR_ENDIANESS)/test
 
@@ -117,11 +119,14 @@ out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h $(wildcard $(@D)/stubs
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) -c -o $@ $< $(TEST_INCLUDE) 
 
-out/$(TESTDIR_CRC)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_CRC)/*.c))) out/$(CRCDIR)/crc.o $(USE_DEBUG_OBJ)
+out/$(TESTDIR_CRC)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_CRC)/*.c)))\
+ out/$(CRCDIR)/crc.o 
 	@$(call print, LD, $(@))
 	$E$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
 
-out/$(TESTDIR_ENDIANESS)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,$(wildcard src/$(TESTDIR_ENDIANESS)/*.c))) out/$(COMMONDIR)/endianess.o $(USE_DEBUG_OBJ)
+out/$(TESTDIR_ENDIANESS)/test: $(patsubst src%,out%,$(patsubst %.c,%.o,\
+ $(wildcard src/$(TESTDIR_ENDIANESS)/*.c)))\
+ out/$(COMMONDIR)/endianess.o 
 	@$(call print, LD, $(@))
 	$E$(CC) -o $@ $(filter %.o,$^) -Lout/$(MAINDIR) $(TESTLIBS) 
 
@@ -134,7 +139,6 @@ test: build_test
 
 ######### MANUAL TESTS ########
 MANUAL_TESTDIR := $(TESTDIR)/manual
-
 
 MANUAL_BINS = out/$(MANUAL_TESTDIR)/test
 MANUAL_LIBS = -Lout/$(MAINDIR) $(LIBS) -lmext2
