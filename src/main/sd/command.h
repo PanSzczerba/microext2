@@ -1,5 +1,5 @@
-#ifndef MEXT2_COMMAND_H
-#define MEXT2_COMMAND_H
+#ifndef MEXT2_SD_COMMAND_H
+#define MEXT2_SD_COMMAND_H
 
 #include "common.h"
 

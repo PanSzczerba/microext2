@@ -4,7 +4,8 @@
 #include <CUnit/Basic.h>
 
 #include "test.h"
-#include "crc_test.h"
+
+#include "endianess_test.h"
 
 int main(void)
 {
