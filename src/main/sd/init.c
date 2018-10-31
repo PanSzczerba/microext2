@@ -83,7 +83,7 @@ STATIC uint8_t prepare_init_process()
 STATIC uint8_t start_init_process()
 {
     //set ACMD41
-    uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
+    uint8_t command_argument[] = { 0x40, 0x00, 0x00, 0x00 };
     mext2_response response = mext2_send_command(COMMAND_INIT_PROCESS, command_argument);
 
     if(response.r1 & R1_INVALID_RESPONSE)
@@ -96,36 +96,37 @@ STATIC uint8_t start_init_process()
 
 }
 
-STATIC uint8_t read_CSD_register()
+STATIC uint8_t read_CSD_register(mext2_sd* sd)
 {
-    uint8_t csd_register[16];
+    uint8_t* csd_register = sd->csd;
 
     //set CMD9
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     mext2_response response = mext2_send_command(COMMAND_READ_CSD, command_argument);
 
-    if(response.r1 & R1_INVALID_RESPONSE)
+    if(response.r1 != 0)
+    {
+        mext2_warning("Reading CSD register failed\n");
         return MEXT2_RETURN_FAILURE;
 
-    if(response.r1 != 0)
-        mext2_warning("Reading CSD register failed\n");
+    }
     else
     {
-        uint8_t buffer[] = {0xff, 0xff, 0xff, 0xff, 0xff};
-        if(!wait_for_response(buffer))
+        uint8_t buffer;
+        if(!wait_for_response(&buffer))
             return MEXT2_RETURN_FAILURE;
 
         memset(csd_register, 0xff, 16);
-        spi_read_write(csd_register, 16);
-        buffer[0] = 0xff;
-        buffer[1] = 0xff;
-        spi_read_write(buffer, 2);
+        csd_register[0] = buffer;
+        spi_read_write(csd_register + 1, 15);
+        wait_8_clock_cycles();
+        wait_8_clock_cycles();
+        return MEXT2_RETURN_SUCCESS;
     }
 
-    return MEXT2_RETURN_SUCCESS;
 }
 
-mext2_return_value mext2_sd_init(mext2_sd* sd)
+uint8_t mext2_sd_init(mext2_sd* sd)
 {
     uint8_t sd_state = SD_IDLE;
     sd ->  sd_version = SD_NOT_DETERMINED;
@@ -138,6 +139,7 @@ mext2_return_value mext2_sd_init(mext2_sd* sd)
             {
                 reset_pins();
                 sd -> sd_initialized = FALSE;
+                set_clock_frequency(MAX_CLOCK_FREQUENCY);
                 return MEXT2_RETURN_FAILURE;
             }
             break;
@@ -145,6 +147,7 @@ mext2_return_value mext2_sd_init(mext2_sd* sd)
             case SD_INITIALIZED:
             {
                 sd -> sd_initialized = TRUE;
+                set_clock_frequency(MAX_CLOCK_FREQUENCY);
                 return MEXT2_RETURN_SUCCESS;
             }
             break;
@@ -162,7 +165,7 @@ mext2_return_value mext2_sd_init(mext2_sd* sd)
 
             case SD_CONFIGURE_PINS:
             {
-                if(configure_pins() == 1)
+                if(configure_pins() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Pin initialization failed.");
                     sd_state = SD_ERROR;
@@ -174,6 +177,7 @@ mext2_return_value mext2_sd_init(mext2_sd* sd)
             case SD_RESET_SOFTWARE:
             {
                 //usleep(1000);  //wait 1ms
+                set_clock_frequency(200000);
                 mext2_delay(1000);
                 mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
 
@@ -197,7 +201,7 @@ mext2_return_value mext2_sd_init(mext2_sd* sd)
                 {
                     mext2_error("Wrong voltage range.");
                     sd_state = SD_ERROR;
-                } else 
+                } else
                     sd_state = SD_READ_OCR;
             }
             break;
@@ -248,7 +252,7 @@ mext2_return_value mext2_sd_init(mext2_sd* sd)
 
             case SD_READ_CSD:
             {
-                if(read_CSD_register() == MEXT2_RETURN_FAILURE)
+                if(read_CSD_register(sd) == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Cannot read CSD register.");
                     reset_pins();

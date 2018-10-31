@@ -5,7 +5,7 @@
 #include "common.h"
 #include "sd.h"
 
-STATIC mext2_return_value single_block_read(uint32_t index, block512_t* block)
+STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
 {
     //prepare block for read
     memset(block->data, 0xff, 512);
@@ -38,7 +38,7 @@ STATIC mext2_return_value single_block_read(uint32_t index, block512_t* block)
     return MEXT2_RETURN_SUCCESS;
 }
 
-STATIC mext2_return_value multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     //prepare block for read
     memset(block->data, 0xff, 512 * blocks_number);
@@ -94,7 +94,7 @@ STATIC mext2_return_value multiple_block_read(uint32_t index, block512_t* block,
     return MEXT2_RETURN_SUCCESS;
 }
 
-enum mext2_return_value mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number)
+uint8_t mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     if(blocks_number < 1)
     {
@@ -114,7 +114,7 @@ enum mext2_return_value mext2_read_blocks(mext2_sd* sd, uint32_t index, block512
 
 //////////////////////////////////////////////////////
 
-STATIC mext2_return_value single_block_wite(uint32_t index, block512_t* block)
+STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
 {
     wait_8_clock_cycles();
 
@@ -144,7 +144,7 @@ STATIC mext2_return_value single_block_wite(uint32_t index, block512_t* block)
     return MEXT2_RETURN_SUCCESS;
 }
 
-STATIC mext2_return_value multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     wait_8_clock_cycles();
 
@@ -195,7 +195,7 @@ STATIC mext2_return_value multiple_block_write(uint32_t index, block512_t* block
 }
 
 
-enum mext2_return_value mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number)
+uint8_t mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number)
 {
     if(blocks_number < 1)
     {
@@ -212,4 +212,3 @@ enum mext2_return_value mext2_write_blocks(mext2_sd* sd, uint32_t index, block51
 
     return return_value;
 }
-

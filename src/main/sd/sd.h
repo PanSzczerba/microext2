@@ -7,10 +7,11 @@
 #include <string.h>
 #include "common.h"
 
+#define CSD_REG_SIZE 16
+
 enum mext2_return_value;
 
-#define OK  (uint8_t)0x01
-#define NOK (uint8_t)0x00
+#
 
 typedef struct block512_t
 {
@@ -29,9 +30,10 @@ typedef struct mext2_sd
 {
     mext2_sd_version sd_version;
     uint8_t sd_initialized;
+    uint8_t csd[CSD_REG_SIZE];
 } mext2_sd;
 
-enum mext2_return_value mext2_sd_init(mext2_sd* sd);
-enum mext2_return_value mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number);
-enum mext2_return_value mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number);
+uint8_t mext2_sd_init(mext2_sd* sd);
+uint8_t mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number);
+uint8_t mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number);
 #endif

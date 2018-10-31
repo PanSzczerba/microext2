@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "debug.h"
 #include "sd.h"
+#include "command.h"
 
 #define MAX_BLOCKS_TO_READ 128
 #define BLOCK_SIZE 512
@@ -33,6 +34,15 @@ void display_blocks(mext2_sd* sd, size_t block_address, size_t block_no)
     }
 }
 
+void display_csd(mext2_sd* sd)
+{
+    for(int i = 0; i < sizeof(sd->csd)/sizeof(sd->csd[0]); i++)
+    {
+        printf("0x%hhx ", sd->csd[i]);
+    }
+    printf("\n");
+}
+
 
 mext2_sd sd;
 
@@ -50,5 +60,6 @@ int main(void)
         break;
     }
     printf("%d\n", sd.sd_version);
+    display_csd(&sd);
     display_blocks(&sd, 0, 1);
 }
