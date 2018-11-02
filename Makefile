@@ -58,7 +58,7 @@ ifeq ($(strip $(PLATFORM)), raspberrypi)
 	LIBS= -lwiringPi 
 endif
 
-ifeq ($(strip $(USE_LOGS)), 1)
+ifneq ($(strip $(NO_USE_LOGS)), 1)
 	CFLAGS += -DMEXT2_MSG_DEBUG
 	OBJS += out/$(PLATFORMDIR)/debug.o
 

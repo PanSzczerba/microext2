@@ -36,6 +36,7 @@ void display_blocks(mext2_sd* sd, size_t block_address, size_t block_no)
 
 void display_csd(mext2_sd* sd)
 {
+    printf("CSD register content: ");
     for(int i = 0; i < sizeof(sd->csd)/sizeof(sd->csd[0]); i++)
     {
         printf("0x%hhx ", sd->csd[i]);
@@ -59,7 +60,7 @@ int main(void)
         printf("SD initialization success\n");
         break;
     }
-    printf("%d\n", sd.sd_version);
+    printf("SD version: %d\n", sd.sd_version);
     display_csd(&sd);
     display_blocks(&sd, 0, 1);
 }
