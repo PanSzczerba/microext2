@@ -10,7 +10,7 @@ void display_buffer(size_t block_address, block512_t buff)
 {
     for(size_t i = 0; i < 32; i++)
     {
-        printf("%03lx: ", block_address + i*16);
+        printf("%03zx: ", block_address + i*16);
         for(size_t j = 0; j < 16; j++)
             printf("%02x ", buff.data[i * 16 + j]);
         printf("\n");
@@ -26,7 +26,7 @@ void display_blocks(mext2_sd* sd, size_t block_address, size_t block_no)
     {
         for(size_t i = 0; i < 32; i++)
         {
-            printf("%03lx: ", block_address + k*BLOCK_SIZE + i*16);
+            printf("%03zx: ", block_address + k*BLOCK_SIZE + i*16);
             for(size_t j = 0; j < 16; j++)
                 printf("%02x ", buff[k].data[i * 16 + j]);
             printf("\n");
