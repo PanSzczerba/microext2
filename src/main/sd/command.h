@@ -16,14 +16,14 @@
 #define COMMAND_WRITE_MULTIPLE_BLOCK    (uint8_t)0x19   //CMD25
 #define COMMAND_STOP_READ_DATA          (uint8_t)0x0c   //CMD12
 
-#define OCR_REGISTER_LENGTH 4
+#define EXTENDED_RESPONSE_LENGTH 5
 #define COMMAND_ARGUMENT_SIZE 4
 #define N_CYCLES_TIMEOUT        (uint16_t)(-1)
 
 struct mext2_response
 {
     uint8_t r1;
-    uint8_t ocr[OCR_REGISTER_LENGTH];
+    uint8_t extended_response[EXTENDED_RESPONSE_LENGTH - 1];
 } __mext2_packed;
 typedef struct mext2_response mext2_response;
 

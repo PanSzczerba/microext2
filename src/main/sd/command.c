@@ -105,17 +105,23 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
 
     mext2_response response = {0xff, { 0xff, 0xff, 0xff, 0xff } };
 
-    if(response_type == R1b)
-        wait_8_clock_cycles();
-
     if(wait_for_response((uint8_t*) &response))
     {
+        mext2_debug("Response: 0x%hhx", response.r1);
         if(response_type == R7 || response_type == R3)
-            spi_read_write((uint8_t*) response.ocr, 4);
+            spi_read_write((uint8_t*) response.extended_response, 4);
         wait_8_clock_cycles();
     }
-	mext2_debug("Response: 0x%hhx", response.r1);
 
+    if(response_type == R1b)
+    {
+        uint8_t dummy = 0xff;
+        do
+        {
+            dummy = 0xff;
+            wait_8_clock_cycles_with_buffer(&dummy);
+        } while(dummy == 0);
+    }
 
     return response;
 }

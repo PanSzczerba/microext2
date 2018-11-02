@@ -38,6 +38,8 @@ STATIC uint8_t check_voltage_range(mext2_sd* sd)
     //set CMD8
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
     mext2_response response = mext2_send_command(COMMAND_CHECK_VOLTAGE, command_argument);
+    mext2_debug("R7 response payload: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+            response.extended_response[2], response.extended_response[3]);
 
     if(response.r1 & R1_INVALID_RESPONSE)
         return MEXT2_RETURN_FAILURE;
@@ -53,13 +55,15 @@ STATIC uint8_t read_OCR(mext2_sd* sd)
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     mext2_response response = mext2_send_command(COMMAND_READ_OCR, command_argument);
+    mext2_debug("OCR register content: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+            response.extended_response[2], response.extended_response[3]);
 
     if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
         return MEXT2_RETURN_FAILURE;
 
     if(sd -> sd_version == SD_NOT_DETERMINED)
     {
-        if(response.ocr[0] & (uint8_t)0x40)
+        if(response.extended_response[0] & (uint8_t)0x40)
             sd -> sd_version = SD_V2XHCXC;
         else
             sd -> sd_version = SD_V2X;
@@ -176,8 +180,8 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 
             case SD_RESET_SOFTWARE:
             {
-                //usleep(1000);  //wait 1ms
                 set_clock_frequency(100000);
+/*
                 mext2_delay(1000);
                 mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
 
@@ -186,6 +190,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
                     mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
                     mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
                 }
+*/
 
                 if(reset_software() == MEXT2_RETURN_FAILURE)
                 {
