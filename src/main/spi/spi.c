@@ -26,9 +26,7 @@ uint8_t configure_pins()
         mext2_pin_mode(MEXT2_SCLK, MEXT2_OUTPUT);
         mext2_pin_mode(MEXT2_CS, MEXT2_OUTPUT);
         mext2_pin_mode(MEXT2_MOSI, MEXT2_OUTPUT);
-        mext2_pin_mode(MEXT2_MISO, MEXT2_INPUT);
-
-        mext2_pin_mode(MEXT2_MISO, PUD_UP);
+        mext2_pin_mode(MEXT2_MISO, MEXT2_INPUT_PULLUP);
 
         mext2_pin_set(MEXT2_PWR, MEXT2_HIGH);
         mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
@@ -69,12 +67,13 @@ uint8_t spi_read_write(uint8_t* buffer, size_t buffer_size)
 
             mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
             //get response
+            mext2_delay_microseconds(clock_delay);
             if(mext2_pin_get(MEXT2_MISO))
                 buffer[i] = buffer[i] | mask;
             else
                 buffer[i] = buffer[i] & ~mask;
-            mext2_delay_microseconds(clock_delay);
             mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
+            mext2_delay_microseconds(clock_delay);
         }
     }
 
@@ -98,7 +97,7 @@ void reset_pins()
 }
 
 /******* CLOCK FREQUENCY CHANGE ******/
-#define FREQUENCY_TO_DELAY(freq) (unsigned int)(((double)1/(freq)) * 1000000)
+#define FREQUENCY_TO_DELAY(freq) (unsigned int)(((double)1/(2*freq)) * 1000000)
 
 void set_clock_frequency(uint64_t freq)
 {

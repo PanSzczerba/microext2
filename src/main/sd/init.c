@@ -177,7 +177,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             case SD_RESET_SOFTWARE:
             {
                 //usleep(1000);  //wait 1ms
-                set_clock_frequency(200000);
+                set_clock_frequency(100000);
                 mext2_delay(1000);
                 mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
 
