@@ -18,7 +18,7 @@
 
 #define OCR_REGISTER_LENGTH 4
 #define COMMAND_ARGUMENT_SIZE 4
-#define N_CYCLES_TIMEOUT        (uint16_t) 512
+#define N_CYCLES_TIMEOUT        (uint16_t)(-1)
 
 struct mext2_response
 {

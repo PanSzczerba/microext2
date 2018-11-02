@@ -97,6 +97,8 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
 {
     mext2_command command;
     set_command(&command, command_number, command_argument);
+	mext2_debug("Command number sent: %hhu, command body: 0x%hhx 0x%hhx 0x%hhx 0x%hhx 0x%hhx 0x%hhx", command_number,
+			command.index, command.argument[0], command.argument[1], command.argument[2], command.argument[3], command.crc);
     spi_read_write((uint8_t*) &command, COMMAND_SIZE);
 
     enum response_type response_type = get_response_type(command_number);
@@ -112,6 +114,8 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
             spi_read_write((uint8_t*) response.ocr, 4);
         wait_8_clock_cycles();
     }
+	mext2_debug("Response: 0x%hhx", response.r1);
+
 
     return response;
 }

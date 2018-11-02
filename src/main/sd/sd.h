@@ -30,9 +30,12 @@ typedef struct mext2_sd
     mext2_sd_version sd_version;
     uint8_t sd_initialized;
     uint8_t csd[CSD_REG_SIZE];
-    uint64_t fst_part_blk_addr;
+    uint64_t fs_block_addr;
+    uint8_t fs_type;
     union
     {
+//  	Ext2Descriptor ext2;
+//  	FATDescriptor fat;
 
     } fs_specific;
 } mext2_sd;

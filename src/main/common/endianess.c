@@ -8,8 +8,7 @@ uint8_t mext2_is_big_endian(void)
     {
         uint32_t u32;
         uint8_t arr[4];
-    } dummy;
-    dummy.u32 = 0x01020304;
+    } dummy = { 0x01020304 };
 
     return dummy.arr[0] == 0x1;
 }

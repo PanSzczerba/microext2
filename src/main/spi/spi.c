@@ -4,8 +4,8 @@
 #include "pin.h"
 #include "timing.h"
 
-static uint8_t configured_pins = MEXT2_FALSE;
-static unsigned long long int clock_delay = 0;
+STATIC uint8_t configured_pins = MEXT2_FALSE;
+STATIC uint64_t clock_delay = 0;
 
 
 /*********** PIN INICIALIZATION ***********/
@@ -67,13 +67,12 @@ uint8_t spi_read_write(uint8_t* buffer, size_t buffer_size)
             else
                 mext2_pin_set(MEXT2_MOSI, MEXT2_LOW);
 
+            mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
             //get response
             if(mext2_pin_get(MEXT2_MISO))
                 buffer[i] = buffer[i] | mask;
             else
                 buffer[i] = buffer[i] & ~mask;
-
-            mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
             mext2_delay_microseconds(clock_delay);
             mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
         }
