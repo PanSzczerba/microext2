@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include "common.h"
-//#include "fs.h"
+#include "fs.h"
 
 #define CSD_REG_SIZE 16
 
@@ -19,7 +19,7 @@ typedef struct block512_t
 
 typedef enum mext2_sd_version
 {
-    SD_NOT_DETERMINED,
+    SD_NOT_DETERMINED = -1,
     SD_V1X,
     SD_V2X,
     SD_V2XHCXC
@@ -30,14 +30,7 @@ typedef struct mext2_sd
     mext2_sd_version sd_version;
     uint8_t sd_initialized;
     uint8_t csd[CSD_REG_SIZE];
-    uint64_t fs_block_addr;
-    uint8_t fs_type;
-    union
-    {
-//  	Ext2Descriptor ext2;
-//  	FATDescriptor fat;
-
-    } fs_specific;
+    struct mext2_fs_descriptor fs;
 } mext2_sd;
 
 uint8_t mext2_sd_init(mext2_sd* sd);
