@@ -44,6 +44,11 @@ void display_csd(mext2_sd* sd)
     printf("\n");
 }
 
+void display_sd_version(mext2_sd* sd)
+{
+    static char* sd_version_strings[] = { "SD_V1X", "SD_V2X", "SD_V2XHCXC" };
+    printf("SD version: %s\n", sd_version_strings[sd->sd_version]);
+}
 
 mext2_sd sd;
 
@@ -60,7 +65,7 @@ int main(void)
         printf("SD initialization success\n");
         break;
     }
-    printf("SD version: %d\n", sd.sd_version);
+    display_sd_version(&sd);
     display_csd(&sd);
     display_blocks(&sd, 0, 1);
 }

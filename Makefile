@@ -58,7 +58,7 @@ ifeq ($(strip $(PLATFORM)), raspberrypi)
 	LIBS= -lwiringPi 
 endif
 
-ifneq ($(strip $(NO_USE_LOGS)), 1)
+ifneq ($(strip $(NO_LOGS)), 1)
 	CFLAGS += -DMEXT2_MSG_DEBUG
 	OBJS += out/$(PLATFORMDIR)/debug.o
 
@@ -96,6 +96,14 @@ out/$(SDDIR)/init.o: $(addprefix src/$(SDDIR)/, init.c sd.h) src/$(COMMONDIR)/co
 out/$(SDDIR)/rw.o: $(addprefix src/$(SDDIR)/, rw.c sd.h) src/$(COMMONDIR)/common.h\
  $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h) src/$(SPIDIR)/spi.h | $$(@D)/
 
+########### FS ###############
+FSDIR := $(MAINDIR)/fs
+INCLUDE += -Isrc/$(FSDIR)
+
+########## FILE ##############
+FILEDIR := $(MAINDIR)/file
+INCLUDE += -Isrc/$(FILE)
+
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so
 
@@ -103,10 +111,12 @@ out/$(MAINDIR)/libmext2.so: $(OBJS)
 	@$(call print, LD, $(@))
 	$E$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
 
-########### TESTS ############
+########### UT  ##############
 TESTDIR := test
-TESTDIR_CRC := $(TESTDIR)/crc
-TESTDIR_ENDIANESS := $(TESTDIR)/endianess
+
+UTTESTDIR := $(TESTDIR)/UT
+TESTDIR_CRC := $(UTTESTDIR)/crc
+TESTDIR_ENDIANESS := $(UTTESTDIR)/endianess
 TESTLIBS := -lcunit 
 TEST_INCLUDE := 
 
@@ -115,7 +125,7 @@ TEST_BINS = out/$(TESTDIR_CRC)/test out/$(TESTDIR_ENDIANESS)/test
 
 build_test: $(TEST_BINS)
 
-out/$(TESTDIR)/%.o: src/$(TESTDIR)/%.c src/$(TESTDIR)/%.h $(wildcard $(@D)/stubs/*) | $$(@D)/
+out/$(UTTESTDIR)/%.o: src/$(UTTESTDIR)/%.c src/$(UTTESTDIR)/%.h $(wildcard $(@D)/stubs/*) | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) -c -o $@ $< $(TEST_INCLUDE) 
 
@@ -135,7 +145,6 @@ test: build_test
 	$Eout/$(TESTDIR_CRC)/test | tail -6; echo 
 	@$(call print, RUN, out/$(TESTDIR_ENDIANESS)/test)
 	$Eout/$(TESTDIR_ENDIANESS)/test | tail -6; echo
-
 
 ######### MANUAL TESTS ########
 MANUAL_TESTDIR := $(TESTDIR)/manual

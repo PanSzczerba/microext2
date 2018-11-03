@@ -1,0 +1,4 @@
+#ifndef MEXT2_UT_ENDIANESS_TEST_H
+#define MEXT2_UT_ENDIANESS_TEST_H
+
+#endif
