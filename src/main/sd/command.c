@@ -105,6 +105,11 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
 
     mext2_response response = {0xff, { 0xff, 0xff, 0xff, 0xff } };
 
+    if(response_type == R1b)
+    {
+        wait_8_clock_cycles();
+    }
+
     if(wait_for_response((uint8_t*) &response))
     {
         mext2_debug("Response: 0x%hhx", response.r1);

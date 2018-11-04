@@ -5,6 +5,7 @@
 #include "command.h"
 #include "common.h"
 #include "sd.h"
+#include "fs.h"
 
 #define SD_INIT_OK              (uint8_t)0x00
 #define SD_INIT_NOK             (uint8_t)0x01
@@ -20,6 +21,23 @@
 #define SD_START_INIT_PROCESS   (uint8_t)0x0a
 #define SD_READ_OCR_AGAIN       (uint8_t)0x0b
 #define SD_READ_CSD             (uint8_t)0x0c
+
+struct partition_info
+{
+    uint8_t is_bootable;
+    uint8_t fst_sector_chs_address[3];
+    uint8_t part_type;
+    uint8_t lst_sector_chs_address[3];
+    uint32_t lba_address;
+    uint32_t sector_count;
+} __mext2_packed;
+
+struct mbr
+{
+    uint8_t bootloader[446];
+    struct partition_info partitions[4];
+    uint16_t boot_signature;
+} __mext2_packed;
 
 STATIC uint8_t reset_software()
 {
@@ -102,7 +120,7 @@ STATIC uint8_t start_init_process()
 
 STATIC uint8_t read_CSD_register(mext2_sd* sd)
 {
-    uint8_t* csd_register = sd->csd;
+    uint8_t* csd_register = (uint8_t*)&sd->csd;
 
     //set CMD9
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -130,6 +148,62 @@ STATIC uint8_t read_CSD_register(mext2_sd* sd)
 
 }
 
+STATIC void correct_MBR_endianess(struct mbr* mbr_ptr)
+{
+    for(int i = 0; i < 4; i++)
+    {
+        mbr_ptr->partitions[i].lba_address = mext2_flip_endianess32(mbr_ptr->partitions[i].lba_address);
+        mbr_ptr->partitions[i].sector_count = mext2_flip_endianess32(mbr_ptr->partitions[i].sector_count);
+    }
+}
+
+STATIC uint8_t parse_MBR(mext2_sd* sd)
+{
+    struct block512_t mbr[(sizeof(struct mbr) + sizeof(struct block512_t) - 1)/sizeof(struct block512_t)];
+
+    if(mext2_read_blocks(sd, 0, (struct block512_t*)&mbr, sizeof(mbr)/sizeof(struct block512_t)) == MEXT2_RETURN_FAILURE)
+        return MEXT2_RETURN_FAILURE;
+
+    struct mbr* mbr_ptr = (struct mbr*)&mbr;
+
+    if(mext2_is_big_endian())
+        correct_MBR_endianess(mbr_ptr);
+
+    if(mbr_ptr->partitions[0].is_bootable != 0x0 && mbr_ptr->partitions[0].is_bootable != 0x80)
+    {
+        mext2_error("Invalid partition info - wrong bootable flag: 0x%hhx", mbr_ptr->partitions[0].is_bootable);
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    if(mbr_ptr->partitions[0].part_type == 0)
+    {
+        mext2_error("Invalid partition type: 0");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    mext2_debug("Partiton type: 0x%hhx", mbr_ptr->partitions[0].part_type);
+
+    sd->partition_block_addr = mbr_ptr->partitions[0].lba_address;
+    mext2_debug("Partition address 0x%x", sd->partition_block_addr);
+
+    sd->partition_block_size = mbr_ptr->partitions[0].sector_count;
+    mext2_debug("Partition block size 0x%x", sd->partition_block_size);
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+STATIC uint8_t probe_fs_type(mext2_sd* sd)
+{
+    sd->fs.open_strategy = NULL;
+    for(uint8_t i; i < MEXT2_FS_PROBE_CHAINS_SIZE; i++)
+    {
+        if(mext2_fs_probe_chains[i](sd) == MEXT2_RETURN_SUCCESS)
+            return MEXT2_RETURN_SUCCESS;
+    }
+
+    return MEXT2_RETURN_FAILURE;
+}
+
 uint8_t mext2_sd_init(mext2_sd* sd)
 {
     uint8_t sd_state = SD_IDLE;
@@ -152,7 +226,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             {
                 sd -> sd_initialized = TRUE;
                 set_clock_frequency(MAX_CLOCK_FREQUENCY);
-                return MEXT2_RETURN_SUCCESS;
+                goto done;
             }
             break;
 
@@ -181,8 +255,8 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             case SD_RESET_SOFTWARE:
             {
                 set_clock_frequency(100000);
-/*
-                mext2_delay(1000);
+
+                mext2_delay(1);
                 mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
 
                 for(uint8_t i = 0; i < 74; i++) //74 dummy clock cycles
@@ -190,7 +264,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
                     mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
                     mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
                 }
-*/
+
 
                 if(reset_software() == MEXT2_RETURN_FAILURE)
                 {
@@ -274,4 +348,18 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 
     }
 
+done:
+    if(parse_MBR(sd) == MEXT2_RETURN_FAILURE)
+    {
+        mext2_error("MBR parse failed");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    if(probe_fs_type(sd) == MEXT2_RETURN_FAILURE)
+    {
+        mext2_error("No known filesystem found");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    return MEXT2_RETURN_SUCCESS;
 }

@@ -3,8 +3,9 @@ AR=ar
 MKDIR=mkdir
 RM=rm
 ECHO=echo
-CFLAGS= -std=c99 -Wall 
+CFLAGS= -std=c99 -Wall -Wno-packed-bitfield-compat 
 LIBCFLAGS= -fPIC 
+
 
 ifeq ($(strip $(DEBUG)), 1)
 	CFLAGS += -O0 -g 
@@ -14,7 +15,6 @@ ifneq ($(VERBOSE), 1)
 	E=@
 endif
 
-MAINDIR := main
 
 .SECONDEXPANSION:
 
@@ -26,6 +26,26 @@ define print
 	$(ECHO) "  $1 $2"
 endef
 
+######## DIRS ###########
+MAINDIR := main
+COMMONDIR = $(MAINDIR)/common
+
+DEFAULT_PLATFORM := raspberrypi # raspberrypi, arduino
+PLATFORM = $(strip $(DEFAULT_PLATFORM))
+PLATFORMDIR := $(MAINDIR)/platform_specific/$(PLATFORM)
+SPIDIR := $(MAINDIR)/spi
+CRCDIR := $(MAINDIR)/crc
+SDDIR := $(MAINDIR)/sd
+FSDIR := $(MAINDIR)/fs
+FILEDIR := $(MAINDIR)/file
+
+TESTDIR := test
+UTTESTDIR := $(TESTDIR)/UT
+TESTDIR_CRC := $(UTTESTDIR)/crc
+TESTDIR_ENDIANESS := $(UTTESTDIR)/endianess
+MANUAL_TESTDIR := $(TESTDIR)/manual
+
+######## RULES ##########
 out/%/: # Rule for dirs
 	@$(call print, MKDIR, $(@))
 	$E$(MKDIR) -p $@
@@ -33,24 +53,17 @@ out/%/: # Rule for dirs
 out/$(MAINDIR)%.o: # rule for objects
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) $(LIBCFLAGS) -c -o $@ $< $(INCLUDE) 
-	
 
 ########### ALL ##############
 all: lib test
 
 ########### COMMON ###########
-COMMONDIR = $(MAINDIR)/common
 INCLUDE = -Isrc/$(COMMONDIR)
 OBJS += out/$(COMMONDIR)/endianess.o
 
 out/$(COMMONDIR)/endianess.o: $(addprefix src/$(COMMONDIR)/, endianess.c common.h) | $$(@D)/
 
 ###### PLATFORM SPECIFIC #####
-
-DEFAULT_PLATFORM := raspberrypi # raspberrypi, arduino
-PLATFORM = $(strip $(DEFAULT_PLATFORM))
-
-PLATFORMDIR := $(MAINDIR)/platform_specific/$(PLATFORM)
 
 INCLUDE += -Isrc/$(PLATFORMDIR)
 
@@ -67,7 +80,6 @@ out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h)\
 endif
 
 ########### SPI ##############
-SPIDIR := $(MAINDIR)/spi
 OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
@@ -75,14 +87,12 @@ out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h)\
  $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) | $$(@D)/
 
 ########### CRC ##############
-CRCDIR := $(MAINDIR)/crc
 OBJS += out/$(CRCDIR)/crc.o
 INCLUDE += -Isrc/$(CRCDIR)
 
 out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 
 ########### SD ##############
-SDDIR := $(MAINDIR)/sd
 OBJS += $(addprefix out/$(SDDIR)/, $(patsubst %.c,%.o, $(notdir $(wildcard src/$(SDDIR)/*.c))))
 INCLUDE += -Isrc/$(SDDIR)
 
@@ -90,19 +100,31 @@ out/$(SDDIR)/command.o: $(addprefix src/$(SDDIR)/, command.c command.h sd.h)\
  src/$(COMMONDIR)/common.h $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h timing.h)\
  src/$(CRCDIR)/crc.h | $$(@D)/
 
-out/$(SDDIR)/init.o: $(addprefix src/$(SDDIR)/, init.c sd.h) src/$(COMMONDIR)/common.h\
- $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h timing.h)| $$(@D)/
+out/$(SDDIR)/init.o: $(addprefix src/$(SDDIR)/, init.c sd.h) $(addprefix src/$(COMMONDIR)/, common.h)\
+ $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h timing.h) src/$(FSDIR)/fs.h | $$(@D)/
 
 out/$(SDDIR)/rw.o: $(addprefix src/$(SDDIR)/, rw.c sd.h) src/$(COMMONDIR)/common.h\
  $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h) src/$(SPIDIR)/spi.h | $$(@D)/
 
 ########### FS ###############
-FSDIR := $(MAINDIR)/fs
 INCLUDE += -Isrc/$(FSDIR)
+OBJS += $(addprefix out/$(FSDIR)/, fs.o ext2/ext2_descriptor.o)
+
+out/$(FSDIR)/fs.o : $(addprefix src/$(FSDIR)/, fs.c fs.h ext2/ext2_descriptor.h ext2/superblock.h)\
+ $(addprefix src/$(SDDIR)/, sd.h) $(addprefix src/$(COMMONDIR)/, common.h) $(addprefix src/$(PLATFORMDIR)/, debug.h) | $$(@D)/
+
+out/$(FSDIR)/ext2/ext2_descriptor.o : $(addprefix src/$(FSDIR)/, ext2/ext2_descriptor.c ext2/ext2_descriptor.h ext2/superblock.h)\
+ $(addprefix src/$(SDDIR)/,sd.h) $(addprefix src/$(COMMONDIR)/, common.h) $(addprefix src/$(FILEDIR)/, ext2/file.h) | $$(@D)/
 
 ########## FILE ##############
-FILEDIR := $(MAINDIR)/file
-INCLUDE += -Isrc/$(FILE)
+INCLUDE += -Isrc/$(FILEDIR)
+OBJS += $(addprefix out/$(FILEDIR)/, file.o ext2/file.o)
+
+out/$(FILEDIR)/file.o : $(addprefix src/$(FILEDIR)/, file.c file.h) $(addprefix src/$(SDDIR)/, sd.h)\
+ $(addprefix src/$(COMMONDIR)/, limit.h common.h) | $$(@D)/
+
+out/$(FILEDIR)/ext2/file.o : $(addprefix src/$(FILEDIR)/, ext2/file.c ext2/file.h) | $$(@D)/
+
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so
@@ -112,14 +134,8 @@ out/$(MAINDIR)/libmext2.so: $(OBJS)
 	$E$(CC) -shared -Wl,-soname,$(notdir $@) -o $@ $^ $(LIBS)
 
 ########### UT  ##############
-TESTDIR := test
-
-UTTESTDIR := $(TESTDIR)/UT
-TESTDIR_CRC := $(UTTESTDIR)/crc
-TESTDIR_ENDIANESS := $(UTTESTDIR)/endianess
 TESTLIBS := -lcunit 
 TEST_INCLUDE := 
-
 
 TEST_BINS = out/$(TESTDIR_CRC)/test out/$(TESTDIR_ENDIANESS)/test
 
@@ -147,8 +163,6 @@ test: build_test
 	$Eout/$(TESTDIR_ENDIANESS)/test | tail -6; echo
 
 ######### MANUAL TESTS ########
-MANUAL_TESTDIR := $(TESTDIR)/manual
-
 MANUAL_BINS = out/$(MANUAL_TESTDIR)/test
 MANUAL_LIBS = -Lout/$(MAINDIR) $(LIBS) -lmext2
 

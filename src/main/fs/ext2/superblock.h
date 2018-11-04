@@ -1,6 +1,9 @@
 #ifndef MEXT2_FS_EXT2_SUPERBLOCK_H
 #define MEXT2_FS_EXT2_SUPERBLOCK_H
 
+#include <stdint.h>
+#include "common.h"
+
 struct mext2_ext2_superblock
 {
     uint32_t s_inodes_count;
