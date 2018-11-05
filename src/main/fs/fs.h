@@ -3,14 +3,20 @@
 
 #include <stdint.h>
 #include "ext2/ext2_descriptor.h"
+#include "file.h"
 
 struct mext2_file;
 struct mext2_sd;
 
 struct mext2_fs_descriptor
 {
+    mext2_open_strategy open_strategy;
+    mext2_read_strategy write;
+    mext2_write_strategy read;
+    mext2_seek_strategy seek;
+    mext2_close_strategy close;
+    mext2_eof_strategy eof;
     uint8_t open_file_counter;
-    struct mext2_file* (*open_strategy)(struct mext2_sd* sd, char* path, uint16_t mode);
     union
     {
         mext2_ext2_descriptor ext2;
@@ -18,6 +24,8 @@ struct mext2_fs_descriptor
 };
 
 #define MEXT2_FS_PROBE_CHAINS_SIZE 1
-extern uint8_t (*mext2_fs_probe_chains[MEXT2_FS_PROBE_CHAINS_SIZE])(struct mext2_sd*);
+typedef uint8_t (*mext2_probe_fs_strategy)(struct mext2_sd*);
+
+extern mext2_probe_fs_strategy mext2_fs_probe_chains[MEXT2_FS_PROBE_CHAINS_SIZE];
 
 #endif

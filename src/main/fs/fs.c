@@ -14,7 +14,7 @@
 
 uint8_t mext2_fs_probe_magic_chain(mext2_sd* sd);
 
-uint8_t (*mext2_fs_probe_chains[MEXT2_FS_PROBE_CHAINS_SIZE])(struct mext2_sd*) = { mext2_fs_probe_magic_chain };
+mext2_probe_fs_strategy mext2_fs_probe_chains[MEXT2_FS_PROBE_CHAINS_SIZE] = { mext2_fs_probe_magic_chain };
 
 uint8_t mext2_fs_probe_magic_chain(mext2_sd* sd)
 {
