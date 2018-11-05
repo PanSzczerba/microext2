@@ -11,11 +11,11 @@ struct mext2_sd;
 struct mext2_fs_descriptor
 {
     mext2_open_strategy open_strategy;
-    mext2_read_strategy write;
-    mext2_write_strategy read;
-    mext2_seek_strategy seek;
-    mext2_close_strategy close;
-    mext2_eof_strategy eof;
+    mext2_read_strategy write_strategy;
+    mext2_write_strategy read_strategy;
+    mext2_seek_strategy seek_strategy;
+    mext2_close_strategy close_strategy;
+    mext2_eof_strategy eof_strategy;
     uint8_t open_file_counter;
     union
     {

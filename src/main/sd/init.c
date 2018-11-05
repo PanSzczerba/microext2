@@ -247,6 +247,12 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 {
     uint8_t sd_state = SD_IDLE;
     sd ->  sd_version = SD_NOT_DETERMINED;
+    sd ->  fs.read_strategy  = NULL;
+    sd ->  fs.write_strategy = NULL;
+    sd ->  fs.open_strategy  = NULL;
+    sd ->  fs.close_strategy = NULL;
+    sd ->  fs.eof_strategy   = NULL;
+    sd ->  fs.seek_strategy  = NULL;
 
     while(1)
     {
@@ -370,7 +376,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             {
                 if(read_CSD_register(sd) == MEXT2_RETURN_FAILURE)
                 {
-                    mext2_error("CSD register read failed.");
+                    mext2_error("CSD register read_strategy failed.");
                     reset_pins();
                     sd_state = SD_ERROR;
                 } else sd_state = SD_INITIALIZED;

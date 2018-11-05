@@ -1,12 +1,12 @@
 #include <stddef.h>
 #include "file.h"
 
-uint8_t mext2_ext2_open(struct mext2_file* fd, struct mext2_sd* sd, char* path, uint16_t mode)
+uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint16_t mode)
 {
     return MEXT2_RETURN_FAILURE;
 }
 
-uint8_t mext2_ext2_close(struct mext2_file* fd, int count)
+uint8_t mext2_ext2_close(struct mext2_file* fd)
 {
     return MEXT2_RETURN_FAILURE;
 }

@@ -6,7 +6,7 @@ struct mext2_file;
 struct mext2_sd;
 
 /* Function types */
-typedef uint8_t (*mext2_open_strategy)(struct mext2_file*, struct mext2_sd*, char*, uint16_t);
+typedef uint8_t (*mext2_open_strategy)(struct mext2_file*, char*, uint16_t);
 typedef uint8_t (*mext2_close_strategy)(struct mext2_file*);
 typedef uint8_t (*mext2_read_strategy)(struct mext2_file*, void*, size_t);
 typedef uint8_t (*mext2_write_strategy)(struct mext2_file*, void*, size_t);
@@ -32,7 +32,7 @@ typedef struct mext2_file
 } mext2_file;
 
 mext2_file* mext2_open(struct mext2_sd* sd, char* path, uint16_t mode);
-uint8_t mext2_close(mext2_file* fd, int count);
+uint8_t mext2_close(mext2_file* fd);
 uint8_t mext2_write(mext2_file* fd, void* buffer, size_t count);
 uint8_t mext2_read(mext2_file* fd, void* buffer, size_t count);
 uint8_t mext2_seek(mext2_file* fd, int count);
