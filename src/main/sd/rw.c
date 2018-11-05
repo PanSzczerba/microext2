@@ -85,14 +85,6 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* blocks, uint8_t b
     }
 
     wait_8_clock_cycles();
-
-    uint8_t buffer = 0;
-    for(uint8_t i = 0; buffer == 0; i++)
-    {
-        wait_8_clock_cycles_with_buffer(&buffer);
-    }
-
-    wait_8_clock_cycles();
     return MEXT2_RETURN_SUCCESS;
 }
 
