@@ -22,13 +22,13 @@ uint8_t configure_pins()
         unsigned int time_to_wait = 1000;
         mext2_delay_microseconds(time_to_wait);
 
-        mext2_pin_mode(MEXT2_PWR, MEXT2_OUTPUT);
+//      mext2_pin_mode(MEXT2_PWR, MEXT2_OUTPUT);
         mext2_pin_mode(MEXT2_SCLK, MEXT2_OUTPUT);
         mext2_pin_mode(MEXT2_CS, MEXT2_OUTPUT);
         mext2_pin_mode(MEXT2_MOSI, MEXT2_OUTPUT);
         mext2_pin_mode(MEXT2_MISO, MEXT2_INPUT_PULLUP);
 
-        mext2_pin_set(MEXT2_PWR, MEXT2_HIGH);
+//      mext2_pin_set(MEXT2_PWR, MEXT2_HIGH);
         mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
         mext2_pin_set(MEXT2_CS, MEXT2_HIGH);
         mext2_pin_set(MEXT2_MOSI, MEXT2_LOW);
@@ -85,12 +85,12 @@ uint8_t spi_read_write(uint8_t* buffer, size_t buffer_size)
 
 void reset_pins()
 {
-    mext2_pin_set(MEXT2_PWR, MEXT2_LOW);
+//  mext2_pin_set(MEXT2_PWR, MEXT2_LOW);
     mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
     mext2_pin_set(MEXT2_CS, MEXT2_LOW);
     mext2_pin_set(MEXT2_MOSI, MEXT2_LOW);
 
-    mext2_pin_mode(MEXT2_PWR, MEXT2_INPUT);
+//  mext2_pin_mode(MEXT2_PWR, MEXT2_INPUT);
     mext2_pin_mode(MEXT2_SCLK, MEXT2_INPUT);
     mext2_pin_mode(MEXT2_CS, MEXT2_INPUT);
     mext2_pin_mode(MEXT2_MOSI, MEXT2_INPUT);

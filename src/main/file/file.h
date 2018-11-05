@@ -3,17 +3,15 @@
 #include "sd.h"
 #include "ext2/file.h"
 
-struct mext2_file;
-typedef struct mext2_file mext2_file;
-
 enum mext2_file_mode
 {
-    MEXT2_READ,
-    MEXT2_WRITE,
-    MEXT2_RW
+    MEXT2_READ = 0x1,
+    MEXT2_WRITE = 0x2,
+    MEXT2_RW = 0x3,
+    MEXT2_APPEND = 0x4
 };
 
-struct mext2_file
+typedef struct mext2_file
 {
     uint8_t (*write)(struct mext2_file* fd, void* buffer, size_t count);
     uint8_t (*read)(struct mext2_file* fd, void* buffer, size_t count);
@@ -27,9 +25,9 @@ struct mext2_file
     {
         struct mext2_ext2_file ext2;
     } fs_specific;
-};
+} mext2_file;
 
-mext2_file* mext2_open(mext2_sd* sd, char* path, enum mext2_file_mode mode);
+mext2_file* mext2_open(mext2_sd* sd, char* path, uint16_t mode);
 uint8_t mext2_close(mext2_file* fd, int count);
 uint8_t mext2_write(mext2_file* fd, void* buffer, size_t count);
 uint8_t mext2_read(mext2_file* fd, void* buffer, size_t count);

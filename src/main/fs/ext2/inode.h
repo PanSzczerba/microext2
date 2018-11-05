@@ -1,6 +1,9 @@
 #ifndef MEXT2_FS_EXT2_INODE_H
 #define MEXT2_FS_EXT2_INODE_H
 
+#include <stdint.h>
+#include "common.h"
+
 struct mext2_ext2_inode
 {
     uint16_t i_mode;

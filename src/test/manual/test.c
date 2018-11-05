@@ -36,10 +36,12 @@ void display_blocks(mext2_sd* sd, size_t block_address, size_t block_no)
 
 void display_csd(mext2_sd* sd)
 {
+
+    uint8_t* csd_ptr = (uint8_t*)&sd->csd;
     printf("CSD register content: ");
-    for(int i = 0; i < sizeof(sd->csd)/sizeof(sd->csd[0]); i++)
+    for(int i = 0; i < sizeof(sd->csd); i++)
     {
-        printf("0x%hhx ", sd->csd[i]);
+        printf("0x%hhx ", csd_ptr[i]);
     }
     printf("\n");
 }
@@ -54,13 +56,22 @@ mext2_sd sd;
 
 int main(void)
 {
+    if(mext2_is_big_endian())
+    {
+        printf("Big endian\n");
+    }
+    else
+    {
+        printf("Little endian\n");
+    }
+
     mext2_set_log_level(INFO);
     int return_value = mext2_sd_init(&sd);
     switch(return_value)
     {
     case MEXT2_RETURN_FAILURE:
         printf("SD initialization failure\n");
-        return EXIT_FAILURE;
+        break;
     case MEXT2_RETURN_SUCCESS:
         printf("SD initialization success\n");
         break;

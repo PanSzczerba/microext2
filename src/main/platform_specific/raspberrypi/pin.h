@@ -11,7 +11,7 @@
 #define MEXT2_INPUT_PULLUP 2
 
 /* pin numbers */
-#define MEXT2_PWR   3
+//#define MEXT2_PWR   3
 #define MEXT2_SCLK 14
 #define MEXT2_CS   10
 #define MEXT2_MOSI 12

@@ -5,6 +5,8 @@
 #include "common.h"
 #include "sd.h"
 
+#define SDV1X_BLOCK_ADDRESS_SHIFT 9
+
 STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
 {
     //prepare block for read
@@ -38,10 +40,10 @@ STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
     return MEXT2_RETURN_SUCCESS;
 }
 
-STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC uint8_t multiple_block_read(uint32_t index, block512_t* blocks, uint8_t blocks_count)
 {
     //prepare block for read
-    memset(block->data, 0xff, 512 * blocks_number);
+    memset(blocks->data, 0xff, 512 * blocks_count);
 
     wait_8_clock_cycles();
 
@@ -53,9 +55,9 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t bl
         return MEXT2_RETURN_FAILURE;
     }
 
-    for(uint8_t i = 0; i < blocks_number; i++)
+    for(uint8_t i = 0; i < blocks_count; i++)
     {
-        if(!wait_for_response((uint8_t*)&response) == false)
+        if(wait_for_response((uint8_t*)&response) == MEXT2_RETURN_FAILURE)
             return MEXT2_RETURN_FAILURE;
 
         if(response.r1 != 0xfe)
@@ -64,13 +66,13 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t bl
             return MEXT2_RETURN_FAILURE;
         }
 
-        spi_read_write(block[i].data, 512);
+        spi_read_write(blocks[i].data, 512);
 
         wait_8_clock_cycles();
         wait_8_clock_cycles();
     }
 
-    if(!wait_for_response((uint8_t*)&response))
+    if(wait_for_response((uint8_t*)&response) == MEXT2_RETURN_FAILURE)
         return MEXT2_RETURN_FAILURE;
 
     memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
@@ -83,31 +85,27 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* block, uint8_t bl
     }
 
     wait_8_clock_cycles();
-
-    uint8_t buffer = 0;
-    for(uint8_t i = 0; buffer == 0; i++)
-    {
-        wait_8_clock_cycles_with_buffer(&buffer);
-    }
-
-    wait_8_clock_cycles();
     return MEXT2_RETURN_SUCCESS;
 }
 
-uint8_t mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number)
+
+uint8_t mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* blocks, uint8_t blocks_count)
 {
-    if(blocks_number < 1)
+    if(blocks_count < 1)
     {
         mext2_error("Can't read 0 blocks.");
         return MEXT2_RETURN_FAILURE;
     }
 
+    if(sd->sd_version == SD_V1X || sd->sd_version == SD_V2X)
+        index <<= SDV1X_BLOCK_ADDRESS_SHIFT;
+
     mext2_return_value return_value;
 
-    if(blocks_number == 1)
-        return_value = single_block_read(index, block);
+    if(blocks_count == 1)
+        return_value = single_block_read(index, blocks);
     else
-        return_value = multiple_block_read(index,block,blocks_number);
+        return_value = multiple_block_read(index, blocks, blocks_count);
 
     return return_value;
 }
@@ -144,7 +142,7 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
     return MEXT2_RETURN_SUCCESS;
 }
 
-STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t blocks_number)
+STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t blocks_number)
 {
     wait_8_clock_cycles();
 
@@ -160,7 +158,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t b
     {
         wait_8_clock_cycles();
         wait_8_clock_cycles();
-        spi_read_write(block[i].data, 512);
+        spi_read_write(blocks[i].data, sizeof(block512_t));
 
         if(!wait_for_response((uint8_t*) &response))
             return MEXT2_RETURN_FAILURE;
@@ -195,7 +193,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* block, uint8_t b
 }
 
 
-uint8_t mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint8_t blocks_number)
+uint8_t mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* blocks, uint8_t blocks_number)
 {
     if(blocks_number < 1)
     {
@@ -203,12 +201,15 @@ uint8_t mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* block, uint
         return MEXT2_RETURN_FAILURE;
     }
 
+    if(sd->sd_version == SD_V1X || sd->sd_version == SD_V2X)
+        index <<= SDV1X_BLOCK_ADDRESS_SHIFT;
+
     uint8_t return_value;
 
     if(blocks_number == 1)
-        return_value = single_block_wite(index, block);
+        return_value = single_block_wite(index, blocks);
     else
-        return_value = multiple_block_write(index, block, blocks_number);
+        return_value = multiple_block_write(index, blocks, blocks_number);
 
     return return_value;
 }
