@@ -97,7 +97,7 @@ uint8_t mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* blocks, uint
         return MEXT2_RETURN_FAILURE;
     }
 
-    if(sd->sd_version == SD_V1X)
+    if(sd->sd_version == SD_V1X || sd->sd_version == SD_V2X)
         index <<= SDV1X_BLOCK_ADDRESS_SHIFT;
 
     mext2_return_value return_value;
@@ -201,7 +201,7 @@ uint8_t mext2_write_blocks(mext2_sd* sd, uint32_t index, block512_t* blocks, uin
         return MEXT2_RETURN_FAILURE;
     }
 
-    if(sd->sd_version == SD_V1X)
+    if(sd->sd_version == SD_V1X || sd->sd_version == SD_V2X)
         index <<= SDV1X_BLOCK_ADDRESS_SHIFT;
 
     uint8_t return_value;

@@ -18,13 +18,13 @@ char* mext2_level2string[] =
 void mext2_initialize_log_file()
 {
     mext2_log_file = stderr;
+    mext2_is_log_file_initialized = MEXT2_TRUE;
 }
 
 void mext2_set_log_file(FILE* file)
 {
     mext2_log_file = file;
-    if(!mext2_is_log_file_initialized)
-        mext2_is_log_file_initialized = MEXT2_TRUE;
+    mext2_is_log_file_initialized = MEXT2_TRUE;
 }
 
 void mext2_set_log_level(uint8_t level)

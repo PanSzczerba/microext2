@@ -67,8 +67,10 @@ STATIC uint8_t check_voltage_range(mext2_sd* sd)
 
     return MEXT2_RETURN_SUCCESS;
 }
+#define VOLTAGE_3_2_3_3 ((uint8_t)(1 << 4))
+#define VOLTAGE_3_3_3_4 ((uint8_t)(1 << 4))
 
-STATIC uint8_t read_OCR(mext2_sd* sd)
+STATIC uint8_t read_voltage_range(mext2_sd* sd)
 {
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
@@ -77,7 +79,33 @@ STATIC uint8_t read_OCR(mext2_sd* sd)
             response.extended_response[2], response.extended_response[3]);
 
     if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
+    {
+        mext2_error("Cannot read OCR.");
         return MEXT2_RETURN_FAILURE;
+    }
+
+    if(!((response.extended_response[1] & VOLTAGE_3_2_3_3) && (response.extended_response[1] & VOLTAGE_3_3_3_4)))
+    {
+        mext2_error("Unsupported voltage range");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+STATIC uint8_t read_CCS(mext2_sd* sd)
+{
+    //set CMD58
+    uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
+    mext2_response response = mext2_send_command(COMMAND_READ_OCR, command_argument);
+    mext2_debug("OCR register content: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+            response.extended_response[2], response.extended_response[3]);
+
+    if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
+    {
+        mext2_error("Cannot read OCR.");
+        return MEXT2_RETURN_FAILURE;
+    }
 
     if(sd -> sd_version == SD_NOT_DETERMINED)
     {
@@ -298,9 +326,8 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 
             case SD_READ_OCR:
             {
-                if(read_OCR(sd) == MEXT2_RETURN_FAILURE)
+                if(read_voltage_range(sd) == MEXT2_RETURN_FAILURE)
                 {
-                    mext2_error("Cannot read OCR.");
                     sd_state = SD_ERROR;
                 } else sd_state = SD_PREPARE_INIT_PROCESS;
             }
@@ -330,9 +357,8 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             {
                 if(sd -> sd_version == SD_NOT_DETERMINED)
                 {
-                    if(read_OCR(sd) == MEXT2_RETURN_FAILURE)
+                    if(read_CCS(sd) == MEXT2_RETURN_FAILURE)
                     {
-                        mext2_error("Cannot read OCR.");
                         sd_state = SD_ERROR;
                     }
                 }
@@ -344,7 +370,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             {
                 if(read_CSD_register(sd) == MEXT2_RETURN_FAILURE)
                 {
-                    mext2_error("Cannot read CSD register.");
+                    mext2_error("CSD register read failed.");
                     reset_pins();
                     sd_state = SD_ERROR;
                 } else sd_state = SD_INITIALIZED;
