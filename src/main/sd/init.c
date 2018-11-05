@@ -138,19 +138,19 @@ STATIC uint8_t read_CSD_register(mext2_sd* sd)
     if(!wait_for_response(&buffer))
         return MEXT2_RETURN_FAILURE;
 
-    if(sd->sd_version != SD_V1X )
+    if(buffer == 0xfe)
     {
-        if(buffer != 0xfe)
-        {
-            mext2_error("Invalid CSD register token: 0x%hhx", buffer);
-            return MEXT2_RETURN_FAILURE;
-        }
         spi_read_write(csd_register, 16);
     }
-    else
+    else if(buffer == 0x0 || buffer == 0x40)
     {
         csd_register[0] = buffer;
         spi_read_write(csd_register + 1, 15);
+    }
+    else
+    {
+        mext2_error("Invalid CSD register token: 0x%hhx", buffer);
+        return MEXT2_RETURN_FAILURE;
     }
 
     wait_8_clock_cycles();

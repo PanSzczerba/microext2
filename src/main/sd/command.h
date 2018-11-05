@@ -18,7 +18,7 @@
 
 #define EXTENDED_RESPONSE_LENGTH 5
 #define COMMAND_ARGUMENT_SIZE 4
-#define N_CYCLES_TIMEOUT        (uint16_t)2048
+#define N_CYCLES_TIMEOUT (uint16_t)2048
 
 struct mext2_response
 {
