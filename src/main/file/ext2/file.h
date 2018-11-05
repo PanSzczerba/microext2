@@ -1,6 +1,7 @@
 #ifndef MEXT2_FILE_EXT2_H
 #define MEXT2_FILE_EXT2_H
 #include <stddef.h>
+#include <stdint.h>
 #include "ext2/inode_descriptor.h"
 
 struct mext2_sd;

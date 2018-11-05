@@ -16,7 +16,9 @@ struct mext2_fs_descriptor
     mext2_seek_strategy seek_strategy;
     mext2_close_strategy close_strategy;
     mext2_eof_strategy eof_strategy;
+
     uint8_t open_file_counter;
+    uint8_t ro_flag;
     union
     {
         mext2_ext2_descriptor ext2;

@@ -1,6 +1,11 @@
 #include <stddef.h>
 #include "file.h"
 
+STATIC uint32_t inode_lookup(struct mext2_file* fd, char* path)
+{
+    return 0;
+}
+
 uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint16_t mode)
 {
     return MEXT2_RETURN_FAILURE;

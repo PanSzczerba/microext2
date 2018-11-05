@@ -30,21 +30,20 @@ uint8_t mext2_fs_probe_magic_chain(mext2_sd* sd)
     uint16_t magic = mext2_le_to_cpu16(*((uint16_t*)(((uint8_t*)superblock) + MAGIC_OFFSET)));
     mext2_debug("FS magic: 0x%hx", magic);
 
-    uint8_t fs_found = MEXT2_TRUE;
 
     switch(magic)
     {
     case EXT2_SUPER_MAGIC:
         mext2_log("Found Ext2 magic number");
-        mext2_ext2_sd_filler(sd, (struct mext2_ext2_superblock*)superblock);
+        if(mext2_ext2_sd_parser(sd, (struct mext2_ext2_superblock*)superblock) != MEXT2_RETURN_SUCCESS)
+        {
+            mext2_error("Couldn't parse ext2 superblock");
+        }
         break;
     default:
-        mext2_debug("Couldn't find any known magic number");
-        fs_found = MEXT2_FALSE;
+        mext2_error("Couldn't find any known magic number");
+        return MEXT2_RETURN_FAILURE;
     }
 
-    if(fs_found)
-        return MEXT2_RETURN_SUCCESS;
-    else
-        return MEXT2_RETURN_FAILURE;
+    return MEXT2_RETURN_SUCCESS;
 }

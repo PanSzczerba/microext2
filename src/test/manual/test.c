@@ -78,5 +78,5 @@ int main(void)
     }
     display_sd_version(&sd);
     display_csd(&sd);
-    display_blocks(&sd, 0, 1);
+    display_blocks(&sd, sd.partition_block_addr + 2, 2);
 }
