@@ -121,7 +121,7 @@ INCLUDE += -Isrc/$(FILEDIR)
 OBJS += $(addprefix out/$(FILEDIR)/, file.o ext2/file.o)
 
 out/$(FILEDIR)/file.o : $(addprefix src/$(FILEDIR)/, file.c file.h) $(addprefix src/$(SDDIR)/, sd.h)\
- $(addprefix src/$(COMMONDIR)/, limit.h common.h) | $$(@D)/
+ $(addprefix src/$(COMMONDIR)/, limit.h common.h) $(addprefix src/$(PLATFORMDIR)/, debug.h) | $$(@D)/
 
 out/$(FILEDIR)/ext2/file.o : $(addprefix src/$(FILEDIR)/, ext2/file.c ext2/file.h) | $$(@D)/
 

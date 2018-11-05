@@ -65,6 +65,7 @@ uint8_t mext2_close(mext2_file* fd)
     else
     {
         free_fd(fd);
+        mext2_info("Successfully closed file");
         return MEXT2_RETURN_SUCCESS;
     }
 }
