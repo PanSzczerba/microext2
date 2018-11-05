@@ -39,6 +39,8 @@ struct mbr
     uint16_t boot_signature;
 } __mext2_packed;
 
+#define MBR_BOOT_SIGNATURE 0xaa55
+
 STATIC uint8_t reset_software()
 {
     //set CMD0
@@ -207,6 +209,12 @@ STATIC uint8_t parse_MBR(mext2_sd* sd)
 
     if(mext2_is_big_endian())
         correct_MBR_endianess(mbr_ptr);
+
+    if(mbr_ptr->boot_signature != MBR_BOOT_SIGNATURE)
+    {
+        mext2_error("Invalid MBR boot signature: 0x%hx", mbr_ptr->boot_signature);
+        return MEXT2_RETURN_FAILURE;
+    }
 
     if(mbr_ptr->partitions[0].is_bootable != 0x0 && mbr_ptr->partitions[0].is_bootable != 0x80)
     {
