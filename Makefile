@@ -59,9 +59,11 @@ all: lib test
 
 ########### COMMON ###########
 INCLUDE = -Isrc/$(COMMONDIR)
-OBJS += out/$(COMMONDIR)/endianess.o
+OBJS += out/$(COMMONDIR)/endianess.o out/$(COMMONDIR)/blocks.o
 
 out/$(COMMONDIR)/endianess.o: $(addprefix src/$(COMMONDIR)/, endianess.c common.h) | $$(@D)/
+
+out/$(COMMONDIR)/blocks.o: $(addprefix src/$(COMMONDIR)/, blocks.c limit.h common.h) | $$(@D)/
 
 ###### PLATFORM SPECIFIC #####
 
@@ -108,12 +110,12 @@ out/$(SDDIR)/rw.o: $(addprefix src/$(SDDIR)/, rw.c sd.h) src/$(COMMONDIR)/common
 
 ########### FS ###############
 INCLUDE += -Isrc/$(FSDIR)
-OBJS += $(addprefix out/$(FSDIR)/, fs.o ext2/ext2_descriptor.o)
+OBJS += $(addprefix out/$(FSDIR)/, fs.o ext2/ext2.o)
 
-out/$(FSDIR)/fs.o : $(addprefix src/$(FSDIR)/, fs.c fs.h ext2/ext2_descriptor.h ext2/superblock.h)\
+out/$(FSDIR)/fs.o : $(addprefix src/$(FSDIR)/, fs.c fs.h ext2/ext2.h ext2/superblock.h)\
  $(addprefix src/$(SDDIR)/, sd.h) $(addprefix src/$(COMMONDIR)/, common.h) $(addprefix src/$(PLATFORMDIR)/, debug.h) | $$(@D)/
 
-out/$(FSDIR)/ext2/ext2_descriptor.o : $(addprefix src/$(FSDIR)/, ext2/ext2_descriptor.c ext2/ext2_descriptor.h ext2/superblock.h)\
+out/$(FSDIR)/ext2/ext2.o : $(addprefix src/$(FSDIR)/, ext2/ext2.c ext2/ext2.h ext2/ext2_descriptor.h ext2/superblock.h)\
  $(addprefix src/$(SDDIR)/,sd.h) $(addprefix src/$(COMMONDIR)/, common.h) $(addprefix src/$(FILEDIR)/, ext2/file.h) | $$(@D)/
 
 ########## FILE ##############
@@ -123,8 +125,8 @@ OBJS += $(addprefix out/$(FILEDIR)/, file.o ext2/file.o)
 out/$(FILEDIR)/file.o : $(addprefix src/$(FILEDIR)/, file.c file.h) $(addprefix src/$(SDDIR)/, sd.h)\
  $(addprefix src/$(COMMONDIR)/, limit.h common.h) $(addprefix src/$(PLATFORMDIR)/, debug.h) | $$(@D)/
 
-out/$(FILEDIR)/ext2/file.o : $(addprefix src/$(FILEDIR)/, ext2/file.c ext2/file.h) | $$(@D)/
-
+out/$(FILEDIR)/ext2/file.o : $(addprefix src/$(FILEDIR)/, ext2/file.c ext2/file.h) \
+ $(addprefix src/$(FSDIR)/, ext2/ext2.h ext2/inode_descriptor.h) | $$(@D)/
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so

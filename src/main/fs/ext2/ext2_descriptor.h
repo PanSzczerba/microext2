@@ -4,8 +4,6 @@
 #include <stdint.h>
 #include "common.h"
 
-#define EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET 2
-
 struct mext2_sd;
 struct mext2_ext2_superblock;
 
@@ -27,7 +25,4 @@ struct mext2_ext2_superblock_shortcut
 } __mext2_packed;
 
 typedef struct mext2_ext2_superblock_shortcut mext2_ext2_descriptor;
-
-uint8_t mext2_ext2_sd_parser(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock);
-
 #endif

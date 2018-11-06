@@ -2,7 +2,7 @@
 #include "sd.h"
 #include "debug.h"
 #include "fs.h"
-#include "ext2/ext2_descriptor.h"
+#include "ext2/ext2.h"
 #include "ext2/superblock.h"
 
 #define UNIX_SUPERBLOCK_SIZE 1024
@@ -18,7 +18,7 @@ mext2_probe_fs_strategy mext2_fs_probe_chains[MEXT2_FS_PROBE_CHAINS_SIZE] = { me
 
 uint8_t mext2_fs_probe_magic_chain(mext2_sd* sd)
 {
-    block512_t superblock[UNIX_SUPERBLOCK_SIZE / sizeof(block512_t)];
+    block512_t* superblock = mext2_usefull_blocks; // usefull blocks should be at least 1024 bytes in size
 
     if(mext2_read_blocks(sd, sd->partition_block_addr + UNIX_SUPERBLOCK_PARTITION_BLOCK_OFFSET,
             superblock, UNIX_SUPERBLOCK_SIZE / sizeof(block512_t)) == MEXT2_RETURN_FAILURE)

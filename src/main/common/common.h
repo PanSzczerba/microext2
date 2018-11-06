@@ -2,6 +2,7 @@
 #define MEXT2_COMMON_H
 
 #include <stdint.h>
+#include "limit.h"
 
 #define STATIC static
 
@@ -17,6 +18,12 @@ typedef enum mext2_return_value
     MEXT2_RETURN_SUCCESS
 } mext2_return_value;
 
+
+typedef struct block512_t
+{
+    uint8_t data[512];
+} block512_t;
+
 uint8_t mext2_is_big_endian(void);
 
 uint16_t mext2_flip_endianess16(uint16_t num);
@@ -30,5 +37,7 @@ uint64_t mext2_flip_endianess64(uint64_t num);
 #define mext2_cpu_to_le16(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess16(num))
 #define mext2_cpu_to_le32(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess32(num))
 #define mext2_cpu_to_le64(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess64(num))
+
+extern block512_t mext2_usefull_blocks[MEXT2_USEFULL_BLOCKS_SIZE];
 
 #endif

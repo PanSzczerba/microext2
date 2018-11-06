@@ -10,11 +10,6 @@
 
 enum mext2_return_value;
 
-typedef struct block512_t
-{
-    uint8_t data[512];
-} block512_t;
-
 typedef enum mext2_sd_version
 {
     SD_NOT_DETERMINED = -1,

@@ -71,7 +71,7 @@ int main(void)
     {
     case MEXT2_RETURN_FAILURE:
         printf("SD initialization failure\n");
-        break;
+        return EXIT_FAILURE;
     case MEXT2_RETURN_SUCCESS:
         printf("SD initialization success\n");
         break;
