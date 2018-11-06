@@ -61,9 +61,11 @@ all: lib test
 INCLUDE = -Isrc/$(COMMONDIR)
 OBJS += out/$(COMMONDIR)/endianess.o out/$(COMMONDIR)/blocks.o
 
-out/$(COMMONDIR)/endianess.o: $(addprefix src/$(COMMONDIR)/, endianess.c common.h) | $$(@D)/
+out/$(COMMONDIR)/blocks.o: src/$(COMMONDIR)/blocks.c src/$(COMMONDIR)/common.h \
+ src/$(COMMONDIR)/limit.h | $$(@D)/
 
-out/$(COMMONDIR)/blocks.o: $(addprefix src/$(COMMONDIR)/, blocks.c limit.h common.h) | $$(@D)/
+out/$(COMMONDIR)/endianess.o: src/$(COMMONDIR)/endianess.c src/$(COMMONDIR)/common.h \
+ src/$(COMMONDIR)/limit.h | $$(@D)/
 
 ###### PLATFORM SPECIFIC #####
 
@@ -77,56 +79,87 @@ ifneq ($(strip $(NO_LOGS)), 1)
 	CFLAGS += -DMEXT2_MSG_DEBUG
 	OBJS += out/$(PLATFORMDIR)/debug.o
 
-out/$(PLATFORMDIR)/debug.o: $(addprefix src/$(PLATFORMDIR)/, debug.c debug.h)\
- src/$(COMMONDIR)/common.h | $$(@D)/
+out/$(PLATFORMDIR)/debug.o: src/$(PLATFORMDIR)/debug.c \
+ src/$(PLATFORMDIR)/debug.h src/$(COMMONDIR)/common.h \
+ src/$(COMMONDIR)/limit.h | $$(@D)/
+
 endif
 
 ########### SPI ##############
 OBJS += out/$(SPIDIR)/spi.o
 INCLUDE += -Isrc/$(SPIDIR)
 
-out/$(SPIDIR)/spi.o: $(addprefix src/$(SPIDIR)/, spi.c spi.h)\
- $(addprefix src/$(PLATFORMDIR)/, debug.h pin.h timing.h) | $$(@D)/
+out/$(SPIDIR)/spi.o: src/$(SPIDIR)/spi.c src/$(COMMONDIR)/common.h \
+ src/$(COMMONDIR)/limit.h src/$(SPIDIR)/spi.h \
+ src/$(PLATFORMDIR)/debug.h \
+ src/$(PLATFORMDIR)/pin.h \
+ src/$(PLATFORMDIR)/timing.h | $$(@D)/
 
 ########### CRC ##############
 OBJS += out/$(CRCDIR)/crc.o
 INCLUDE += -Isrc/$(CRCDIR)
 
-out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
+#out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
+out/$(CRCDIR)/crc.o: src/$(CRCDIR)/crc.c src/$(CRCDIR)/crc.h | $$(@D)/
 
 ########### SD ##############
 OBJS += $(addprefix out/$(SDDIR)/, $(patsubst %.c,%.o, $(notdir $(wildcard src/$(SDDIR)/*.c))))
 INCLUDE += -Isrc/$(SDDIR)
 
-out/$(SDDIR)/command.o: $(addprefix src/$(SDDIR)/, command.c command.h sd.h)\
- src/$(COMMONDIR)/common.h $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h timing.h)\
- src/$(CRCDIR)/crc.h | $$(@D)/
+out/$(SDDIR)/init.o: src/$(SDDIR)/init.c src/$(PLATFORMDIR)/debug.h \
+ src/$(PLATFORMDIR)/pin.h \
+ src/$(PLATFORMDIR)/timing.h src/$(SPIDIR)/spi.h \
+ src/$(SDDIR)/command.h src/$(COMMONDIR)/common.h src/$(COMMONDIR)/limit.h \
+ src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h \
+ src/$(FILEDIR)/file.h src/$(FILEDIR)/ext2/file.h \
+ src/$(FSDIR)/ext2/inode_descriptor.h | $$(@D)/
 
-out/$(SDDIR)/init.o: $(addprefix src/$(SDDIR)/, init.c sd.h) $(addprefix src/$(COMMONDIR)/, common.h)\
- $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h timing.h) src/$(FSDIR)/fs.h | $$(@D)/
+out/$(SDDIR)/command.o: src/$(SDDIR)/command.c src/$(SPIDIR)/spi.h src/$(CRCDIR)/crc.h \
+ src/$(SDDIR)/command.h src/$(COMMONDIR)/common.h src/$(COMMONDIR)/limit.h \
+ src/$(PLATFORMDIR)/debug.h \
+ src/$(PLATFORMDIR)/pin.h src/$(SDDIR)/sd.h \
+ src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
+ src/$(FILEDIR)/ext2/file.h src/$(FSDIR)/ext2/inode_descriptor.h | $$(@D)/
 
-out/$(SDDIR)/rw.o: $(addprefix src/$(SDDIR)/, rw.c sd.h) src/$(COMMONDIR)/common.h\
- $(addprefix src/$(PLATFORMDIR)/, pin.h debug.h) src/$(SPIDIR)/spi.h | $$(@D)/
+out/$(SDDIR)/rw.o: src/$(SDDIR)/rw.c src/$(PLATFORMDIR)/debug.h \
+ src/$(PLATFORMDIR)/pin.h src/$(SPIDIR)/spi.h \
+ src/$(SDDIR)/command.h src/$(COMMONDIR)/common.h src/$(COMMONDIR)/limit.h \
+ src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h \
+ src/$(FILEDIR)/file.h src/$(FILEDIR)/ext2/file.h \
+ src/$(FSDIR)/ext2/inode_descriptor.h | $$(@D)/
 
 ########### FS ###############
 INCLUDE += -Isrc/$(FSDIR)
 OBJS += $(addprefix out/$(FSDIR)/, fs.o ext2/ext2.o)
 
-out/$(FSDIR)/fs.o : $(addprefix src/$(FSDIR)/, fs.c fs.h ext2/ext2.h ext2/superblock.h)\
- $(addprefix src/$(SDDIR)/, sd.h) $(addprefix src/$(COMMONDIR)/, common.h) $(addprefix src/$(PLATFORMDIR)/, debug.h) | $$(@D)/
+out/$(FSDIR)/ext2/ext2.o: src/$(FSDIR)/ext2/ext2.c src/$(FSDIR)/ext2/ext2.h \
+ src/$(FSDIR)/ext2/superblock.h src/$(COMMONDIR)/common.h \
+ src/$(COMMONDIR)/limit.h src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h \
+ src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
+ src/$(FILEDIR)/ext2/file.h src/$(FSDIR)/ext2/inode_descriptor.h \
+ src/$(PLATFORMDIR)/debug.h src/$(FILEDIR)/ext2/file.h | $$(@D)/
 
-out/$(FSDIR)/ext2/ext2.o : $(addprefix src/$(FSDIR)/, ext2/ext2.c ext2/ext2.h ext2/ext2_descriptor.h ext2/superblock.h)\
- $(addprefix src/$(SDDIR)/,sd.h) $(addprefix src/$(COMMONDIR)/, common.h) $(addprefix src/$(FILEDIR)/, ext2/file.h) | $$(@D)/
+out/$(FSDIR)/fs.o: src/$(FSDIR)/fs.c src/$(COMMONDIR)/common.h src/$(COMMONDIR)/limit.h \
+ src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h \
+ src/$(FILEDIR)/file.h src/$(FILEDIR)/ext2/file.h \
+ src/$(FSDIR)/ext2/inode_descriptor.h \
+ src/$(PLATFORMDIR)/debug.h src/$(FSDIR)/fs.h \
+ src/$(FSDIR)/ext2/ext2.h src/$(FSDIR)/ext2/superblock.h | $$(@D)/
 
 ########## FILE ##############
 INCLUDE += -Isrc/$(FILEDIR)
 OBJS += $(addprefix out/$(FILEDIR)/, file.o ext2/file.o)
 
-out/$(FILEDIR)/file.o : $(addprefix src/$(FILEDIR)/, file.c file.h) $(addprefix src/$(SDDIR)/, sd.h)\
- $(addprefix src/$(COMMONDIR)/, limit.h common.h) $(addprefix src/$(PLATFORMDIR)/, debug.h) | $$(@D)/
+out/$(FILEDIR)/file.o: src/$(FILEDIR)/file.c \
+ src/$(PLATFORMDIR)/debug.h src/$(FILEDIR)/file.h \
+ src/$(FILEDIR)/ext2/file.h src/$(FSDIR)/ext2/inode_descriptor.h \
+ src/$(COMMONDIR)/common.h src/$(COMMONDIR)/limit.h src/$(SDDIR)/sd.h \
+ src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
+ src/$(COMMONDIR)/limit.h | $$(@D)/
 
-out/$(FILEDIR)/ext2/file.o : $(addprefix src/$(FILEDIR)/, ext2/file.c ext2/file.h) \
- $(addprefix src/$(FSDIR)/, ext2/ext2.h ext2/inode_descriptor.h) | $$(@D)/
+out/$(FILEDIR)/ext2/file.o: src/$(FILEDIR)/ext2/file.c src/$(FILEDIR)/ext2/file.h \
+ src/$(FSDIR)/ext2/inode_descriptor.h src/$(COMMONDIR)/common.h \
+ src/$(COMMONDIR)/limit.h | $$(@D)/
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so
