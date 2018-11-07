@@ -18,7 +18,7 @@ STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
     mext2_response response = mext2_send_command(COMMAND_READ_SINGLE_BLOCK, command_argument);
     if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
     {
-        mext2_error("Can't read block. R1 response: 0x%hhx", response.r1);
+        mext2_error("Can't read block. R1 response: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -27,7 +27,7 @@ STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
 
     if(response.r1 != 0xfe)
     {
-        mext2_error("Received wrong data token. Token value: 0x%hhx", response.r1);
+        mext2_error("Received wrong data token. Token value: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -51,7 +51,7 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* blocks, uint8_t b
     mext2_response response = mext2_send_command(COMMAND_READ_MULTIPLE_BLOCK, command_argument);
     if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
     {
-        mext2_error("Can't read block. R1 response: 0x%hhx", response.r1);
+        mext2_error("Can't read block. R1 response: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -62,7 +62,7 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* blocks, uint8_t b
 
         if(response.r1 != 0xfe)
         {
-            mext2_error("Received wrong data token. Token value: 0x%hhx", response.r1);
+            mext2_error("Received wrong data token. Token value: %#hhx", response.r1);
             return MEXT2_RETURN_FAILURE;
         }
 
@@ -80,7 +80,7 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* blocks, uint8_t b
     response = mext2_send_command(COMMAND_STOP_READ_DATA, command_argument);
     if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
     {
-        mext2_error("Can't read block. R1 response: 0x%hhx", response.r1);
+        mext2_error("Can't read block. R1 response: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -120,7 +120,7 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
     mext2_response response = mext2_send_command(COMMAND_WRITE_SINGLE_BLOCK, command_argument);
     if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
     {
-        mext2_error("Can't write block. R1 response: 0x%hhx", response.r1);
+        mext2_error("Can't write block. R1 response: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -150,7 +150,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
     mext2_response response = mext2_send_command(COMMAND_WRITE_MULTIPLE_BLOCK, command_argument);
     if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
     {
-        mext2_error("Can't write block. R1 response: 0x%hhx", response.r1);
+        mext2_error("Can't write block. R1 response: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -177,7 +177,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
     response = mext2_send_command(COMMAND_STOP_READ_DATA, command_argument);
     if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
     {
-        mext2_error("Can't read block. R1 response: 0x%hhx", response.r1);
+        mext2_error("Can't read block. R1 response: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 

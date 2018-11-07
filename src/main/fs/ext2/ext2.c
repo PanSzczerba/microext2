@@ -20,7 +20,7 @@ block512_t* mext2_get_ext2_block(struct mext2_sd* sd, uint32_t block_no)
 
     if(mext2_read_blocks(sd, block_block_address, mext2_usefull_blocks, ext2_block_block_size) != MEXT2_RETURN_SUCCESS)
     {
-        mext2_error("Can't read block no %d, at address 0x%x", block_no, block_block_address);
+        mext2_error("Can't read block no %d, at address %#x", block_no, block_block_address);
         return NULL;
     }
 
@@ -114,7 +114,7 @@ STATIC void correct_dir_entry_head_endianess(struct mext2_ext2_dir_entry_head* h
 STATIC uint32_t find_inode_no_direct_block(mext2_sd* sd, uint32_t direct_block_address, char* name)
 {
 
-    mext2_debug("Looking for name '%s' in direct block at address 0x%x", name, direct_block_address);
+    mext2_debug("Looking for name '%s' in direct block at address %#x", name, direct_block_address);
     block512_t* block;
     if((block = mext2_get_ext2_block(sd, direct_block_address)) == NULL)
     {
@@ -152,7 +152,7 @@ STATIC uint32_t find_inode_no_direct_block(mext2_sd* sd, uint32_t direct_block_a
 
 STATIC uint32_t find_inode_no_indirect_block(mext2_sd* sd, uint32_t indirect_block_address, char* name)
 {
-    mext2_debug("Looking for name '%s' in indirect block at address 0x%x", name, indirect_block_address);
+    mext2_debug("Looking for name '%s' in indirect block at address %#x", name, indirect_block_address);
     uint32_t* direct_blocks;
     uint32_t inode_no;
 
@@ -186,7 +186,7 @@ STATIC uint32_t find_inode_no_indirect_block(mext2_sd* sd, uint32_t indirect_blo
 
 STATIC uint32_t find_inode_no_double_indirect_block(mext2_sd* sd, uint32_t double_indirect_block_address, char* name)
 {
-    mext2_debug("Looking for name '%s' in double indirect block at address 0x%x", name, double_indirect_block_address);
+    mext2_debug("Looking for name '%s' in double indirect block at address %#x", name, double_indirect_block_address);
     uint32_t* indirect_blocks;
     uint32_t inode_no;
 
@@ -220,7 +220,7 @@ STATIC uint32_t find_inode_no_double_indirect_block(mext2_sd* sd, uint32_t doubl
 
 STATIC uint32_t find_inode_no_triple_indirect_block(mext2_sd* sd, uint32_t triple_indirect_block_address, char* name)
 {
-    mext2_debug("Looking for name '%s' in triple indirect block at address 0x%x", name, triple_indirect_block_address);
+    mext2_debug("Looking for name '%s' in triple indirect block at address %#x", name, triple_indirect_block_address);
     uint32_t* double_indirect_blocks;
     uint32_t inode_no;
 
@@ -266,7 +266,7 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
         return EXT2_INVALID_INO;
     }
 
-    mext2_debug("Inode block address: 0x%hx", inode_address.block_address);
+    mext2_debug("Inode block address: %#hx", inode_address.block_address);
 
     block512_t* block;
     if((block = mext2_get_ext2_block(sd, inode_address.block_address)) == NULL)
@@ -288,8 +288,8 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
         return EXT2_INVALID_INO;
     }
 
-    mext2_debug("Inode mode: 0x%hx", inode->i_mode);
-    mext2_debug("Inode i_size: 0x%x", inode->i_size);
+    mext2_debug("Inode mode: %#hx", inode->i_mode);
+    mext2_debug("Inode i_size: %#x", inode->i_size);
     mext2_debug("Inode i_blocks: %d", inode->i_blocks);
 
 
@@ -360,6 +360,41 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
     return EXT2_INVALID_INO;
 }
 
+
+STATIC char* path_tokenize(char* path)
+{
+    static char* token_beggining = NULL;
+    if(path != NULL)
+    {
+        token_beggining = path;
+        while(*token_beggining == MEXT2_PATH_SEPARATOR)
+            token_beggining++;
+
+        if(token_beggining != '\0')
+            return token_beggining;
+        else
+        {
+            token_beggining = NULL;
+            return NULL;
+        }
+    }
+
+    if(token_beggining == NULL)
+        return NULL;
+
+    token_beggining = strchr(token_beggining, MEXT2_PATH_SEPARATOR);
+
+    if(token_beggining == NULL)
+        return NULL;
+
+    while(*token_beggining  == MEXT2_PATH_SEPARATOR)
+        token_beggining++;
+    if(token_beggining != '\0')
+        return token_beggining;
+    else
+        return NULL;
+
+}
 uint32_t mext2_inode_no_lookup(struct mext2_sd* sd, char* path)
 {
     if(path[0] != MEXT2_PATH_SEPARATOR)
@@ -369,19 +404,23 @@ uint32_t mext2_inode_no_lookup(struct mext2_sd* sd, char* path)
         return EXT2_INVALID_INO;
     }
 
+    char* token = path_tokenize(path);
     char delimiter[] = { MEXT2_PATH_SEPARATOR, '\0' };
-    char* token = strtok(path, delimiter);
+    char name[MAX_FILENAME_LENGTH + 1];
 
     uint32_t current_inode_no = EXT2_ROOT_INO;
 
     do
     {
-        if((current_inode_no = mext2_inode_no_lookup_from_dir_inode(sd, current_inode_no, token)) == EXT2_INVALID_INO)
+        size_t token_length = strcspn(token, delimiter);
+        strncpy(name, token, token_length);
+        name[token_length] = '\0';
+        if((current_inode_no = mext2_inode_no_lookup_from_dir_inode(sd, current_inode_no, name)) == EXT2_INVALID_INO)
         {
             return EXT2_INVALID_INO;
         }
     }
-    while((token = strtok(NULL, delimiter)));
+    while((token = path_tokenize(NULL)));
 
     return current_inode_no;
 }
@@ -449,18 +488,18 @@ uint8_t mext2_ext2_sd_parser(struct mext2_sd* sd, struct mext2_ext2_superblock* 
 
     if(sd->fs.descriptor.ext2.s_feature_compat & ~(MEXT2_FEATURES_COMPAT))
     {
-        mext2_log("Detected unsupported compatible features: 0x%x", sd->fs.descriptor.ext2.s_feature_compat);
+        mext2_log("Detected unsupported compatible features: %#x", sd->fs.descriptor.ext2.s_feature_compat);
     }
 
     if(sd->fs.descriptor.ext2.s_feature_incompat & ~(MEXT2_FEATURES_INCOMPAT))
     {
-        mext2_error("Detected incompatible features: 0x%x", sd->fs.descriptor.ext2.s_feature_incompat);
+        mext2_error("Detected incompatible features: %#x", sd->fs.descriptor.ext2.s_feature_incompat);
         return MEXT2_RETURN_FAILURE;
     }
 
     if(sd->fs.descriptor.ext2.s_feature_ro_compat & ~(MEXT2_FEATURES_RO_COMPAT))
     {
-        mext2_warning("Detected unsupported read-only compatible features: 0x%x", sd->fs.descriptor.ext2.s_feature_ro_compat);
+        mext2_warning("Detected unsupported read-only compatible features: %#x", sd->fs.descriptor.ext2.s_feature_ro_compat);
         sd->fs.ro_flag = MEXT2_TRUE;
     }
     else

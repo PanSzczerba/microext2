@@ -58,7 +58,7 @@ STATIC uint8_t check_voltage_range(mext2_sd* sd)
     //set CMD8
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
     mext2_response response = mext2_send_command(COMMAND_CHECK_VOLTAGE, command_argument);
-    mext2_debug("R7 response payload: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+    mext2_debug("R7 response payload: %#hhx %#hhx %#hhx %#hhx", response.extended_response[0], response.extended_response[1],
             response.extended_response[2], response.extended_response[3]);
 
     if(response.r1 & R1_INVALID_RESPONSE)
@@ -77,7 +77,7 @@ STATIC uint8_t read_voltage_range(mext2_sd* sd)
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     mext2_response response = mext2_send_command(COMMAND_READ_OCR, command_argument);
-    mext2_debug("OCR register content: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+    mext2_debug("OCR register content: %#hhx %#hhx %#hhx %#hhx", response.extended_response[0], response.extended_response[1],
             response.extended_response[2], response.extended_response[3]);
 
     if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
@@ -100,7 +100,7 @@ STATIC uint8_t read_CCS(mext2_sd* sd)
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     mext2_response response = mext2_send_command(COMMAND_READ_OCR, command_argument);
-    mext2_debug("OCR register content: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+    mext2_debug("OCR register content: %#hhx %#hhx %#hhx %#hhx", response.extended_response[0], response.extended_response[1],
             response.extended_response[2], response.extended_response[3]);
 
     if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
@@ -179,7 +179,7 @@ STATIC uint8_t read_CSD_register(mext2_sd* sd)
     }
     else
     {
-        mext2_error("Invalid CSD register token: 0x%hhx", buffer);
+        mext2_error("Invalid CSD register token: %#hhx", buffer);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -212,13 +212,13 @@ STATIC uint8_t parse_MBR(mext2_sd* sd)
 
     if(mbr_ptr->boot_signature != MBR_BOOT_SIGNATURE)
     {
-        mext2_error("Invalid MBR boot signature: 0x%hx", mbr_ptr->boot_signature);
+        mext2_error("Invalid MBR boot signature: %#hx", mbr_ptr->boot_signature);
         return MEXT2_RETURN_FAILURE;
     }
 
     if(mbr_ptr->partitions[0].is_bootable != 0x0 && mbr_ptr->partitions[0].is_bootable != 0x80)
     {
-        mext2_error("Invalid partition info - wrong bootable flag: 0x%hhx", mbr_ptr->partitions[0].is_bootable);
+        mext2_error("Invalid partition info - wrong bootable flag: %#hhx", mbr_ptr->partitions[0].is_bootable);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -228,13 +228,13 @@ STATIC uint8_t parse_MBR(mext2_sd* sd)
         return MEXT2_RETURN_FAILURE;
     }
 
-    mext2_debug("Partiton type: 0x%hhx", mbr_ptr->partitions[0].part_type);
+    mext2_debug("Partiton type: %#hhx", mbr_ptr->partitions[0].part_type);
 
     sd->partition_block_addr = mbr_ptr->partitions[0].lba_address;
-    mext2_debug("Partition address 0x%x", sd->partition_block_addr);
+    mext2_debug("Partition address %#x", sd->partition_block_addr);
 
     sd->partition_block_size = mbr_ptr->partitions[0].sector_count;
-    mext2_debug("Partition block size 0x%x", sd->partition_block_size);
+    mext2_debug("Partition block size %#x", sd->partition_block_size);
 
     return MEXT2_RETURN_SUCCESS;
 }

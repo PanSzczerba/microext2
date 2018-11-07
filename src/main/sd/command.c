@@ -97,7 +97,7 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
 {
     mext2_command command;
     set_command(&command, command_number, command_argument);
-    mext2_debug("Command number sent: %hhu, command body: 0x%hhx 0x%hhx 0x%hhx 0x%hhx 0x%hhx 0x%hhx", command_number,
+    mext2_debug("Command number sent: %hhu, command body: %#hhx %#hhx %#hhx %#hhx %#hhx %#hhx", command_number,
             command.index, command.argument[0], command.argument[1], command.argument[2], command.argument[3], command.crc);
     spi_read_write((uint8_t*) &command, COMMAND_SIZE);
 
@@ -112,7 +112,7 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
 
     if(wait_for_response((uint8_t*) &response))
     {
-        mext2_debug("Response: 0x%hhx", response.r1);
+        mext2_debug("Response: %#hhx", response.r1);
         if(response_type == R7 || response_type == R3)
             spi_read_write((uint8_t*) response.extended_response, 4);
         wait_8_clock_cycles();

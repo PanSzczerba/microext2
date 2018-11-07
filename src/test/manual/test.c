@@ -82,6 +82,6 @@ int main(void)
 //    display_blocks(&sd, sd.partition_block_addr + 2, 2);
 //    display_blocks(&sd, (mext2_inode_no_to_addr(&sd, EXT2_ROOT_INO)).block_address, 1);
 //    display_blocks(&sd, 0x1960, 4096/512);
-    printf("0x%hx\n", mext2_inode_no_lookup_from_dir_inode(&sd, EXT2_ROOT_INO, "ala.txt"));
+    printf("0x%hx\n", mext2_inode_no_lookup(&sd, "//////yey/dziala"));
 
 }
