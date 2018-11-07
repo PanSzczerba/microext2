@@ -18,7 +18,10 @@ struct mext2_ext2_inode
     uint32_t i_blocks;
     uint32_t i_flags;
     uint32_t i_osd1;
-    uint32_t i_block[15];
+    uint32_t i_direct_block[12];
+    uint32_t i_indirect_block;
+    uint32_t i_double_indirect_block;
+    uint32_t i_triple_indirect_block;
     uint32_t i_generation;
     uint32_t i_file_acl;
     uint32_t i_dir_acl;

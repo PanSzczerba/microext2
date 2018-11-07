@@ -4,7 +4,7 @@
 #define MAX_MESSAGE_LEN 128
 
 STATIC uint8_t mext2_log_level = WARNING;
-STATIC uint8_t mext2_is_log_file_initialized = MEXT2_FALSE;
+STATIC mext2_bool mext2_is_log_file_initialized = MEXT2_FALSE;
 STATIC FILE* mext2_log_file = NULL;
 
 char* mext2_level2string[] =

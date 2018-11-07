@@ -4,7 +4,7 @@
 #include "pin.h"
 #include "timing.h"
 
-STATIC uint8_t configured_pins = MEXT2_FALSE;
+STATIC mext2_bool configured_pins = MEXT2_FALSE;
 STATIC uint64_t clock_delay = 0;
 
 

@@ -99,7 +99,6 @@ out/$(SPIDIR)/spi.o: src/$(SPIDIR)/spi.c src/$(COMMONDIR)/common.h \
 OBJS += out/$(CRCDIR)/crc.o
 INCLUDE += -Isrc/$(CRCDIR)
 
-#out/$(CRCDIR)/crc.o: $(addprefix src/$(CRCDIR)/, crc.c crc.h) | $$(@D)/
 out/$(CRCDIR)/crc.o: src/$(CRCDIR)/crc.c src/$(CRCDIR)/crc.h | $$(@D)/
 
 ########### SD ##############
@@ -133,7 +132,9 @@ INCLUDE += -Isrc/$(FSDIR)
 OBJS += $(addprefix out/$(FSDIR)/, fs.o ext2/ext2.o)
 
 out/$(FSDIR)/ext2/ext2.o: src/$(FSDIR)/ext2/ext2.c src/$(FSDIR)/ext2/ext2.h \
- src/$(FSDIR)/ext2/superblock.h src/$(COMMONDIR)/common.h \
+ src/$(FSDIR)/ext2/superblock.h  src/$(COMMONDIR)/common.h \
+ src/$(FSDIR)/ext2/inode.h src/$(FSDIR)/ext2/block_group_descriptor.h \
+ src/$(FSDIR)/ext2/dir_entry.h \
  src/$(COMMONDIR)/limit.h src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h \
  src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
  src/$(FILEDIR)/ext2/file.h src/$(FSDIR)/ext2/inode_descriptor.h \

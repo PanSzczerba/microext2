@@ -2,6 +2,8 @@
 #define MEXT2_FILE_H
 #include "ext2/file.h"
 
+#define MEXT2_PATH_SEPARATOR '/'
+
 struct mext2_file;
 struct mext2_sd;
 

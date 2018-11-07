@@ -18,7 +18,7 @@ mext2_probe_fs_strategy mext2_fs_probe_chains[MEXT2_FS_PROBE_CHAINS_SIZE] = { me
 
 uint8_t mext2_fs_probe_magic_chain(mext2_sd* sd)
 {
-    block512_t* superblock = mext2_usefull_blocks; // usefull blocks should be at least 1024 bytes in size
+    block512_t* superblock = &mext2_usefull_blocks[0]; // usefull blocks should be at least 1024 bytes in size
 
     if(mext2_read_blocks(sd, sd->partition_block_addr + UNIX_SUPERBLOCK_PARTITION_BLOCK_OFFSET,
             superblock, UNIX_SUPERBLOCK_SIZE / sizeof(block512_t)) == MEXT2_RETURN_FAILURE)
@@ -38,6 +38,7 @@ uint8_t mext2_fs_probe_magic_chain(mext2_sd* sd)
         if(mext2_ext2_sd_parser(sd, (struct mext2_ext2_superblock*)superblock) != MEXT2_RETURN_SUCCESS)
         {
             mext2_error("Couldn't parse ext2 superblock");
+            return MEXT2_RETURN_FAILURE;
         }
         break;
     default:

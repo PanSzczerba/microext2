@@ -2,6 +2,7 @@
 #include "debug.h"
 #include "sd.h"
 #include "command.h"
+#include "ext2/ext2.h"
 
 #define MAX_BLOCKS_TO_READ 128
 #define BLOCK_SIZE 512
@@ -78,5 +79,9 @@ int main(void)
     }
     display_sd_version(&sd);
     display_csd(&sd);
-    display_blocks(&sd, sd.partition_block_addr + 2, 2);
+//    display_blocks(&sd, sd.partition_block_addr + 2, 2);
+//    display_blocks(&sd, (mext2_inode_no_to_addr(&sd, EXT2_ROOT_INO)).block_address, 1);
+//    display_blocks(&sd, 0x1960, 4096/512);
+    printf("0x%hx\n", mext2_inode_no_lookup_from_dir_inode(&sd, EXT2_ROOT_INO, "ala.txt"));
+
 }

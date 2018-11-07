@@ -12,6 +12,8 @@
 #define MEXT2_TRUE 1
 #define MEXT2_FALSE 0
 
+typedef uint8_t mext2_bool;
+
 typedef enum mext2_return_value
 {
     MEXT2_RETURN_FAILURE = 0,

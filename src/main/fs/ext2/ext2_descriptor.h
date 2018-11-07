@@ -13,6 +13,7 @@ struct mext2_ext2_superblock_shortcut
     uint32_t s_blocks_count;
     uint32_t s_free_blocks_count;
     uint32_t s_free_inodes_count;
+    uint32_t s_first_data_block;
     uint32_t s_log_block_size;
     uint32_t s_blocks_per_group;
     uint32_t s_inodes_per_group;
