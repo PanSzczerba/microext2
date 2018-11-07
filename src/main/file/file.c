@@ -35,7 +35,7 @@ STATIC void free_fd(mext2_file* fd)
     file_pool_bitmap[index / BITS_IN_BYTE] &= ~(1 << (index % BITS_IN_BYTE));
 }
 
-mext2_file* mext2_open(struct mext2_sd* sd, char* path, uint16_t mode)
+mext2_file* mext2_open(struct mext2_sd* sd, char* path, uint8_t mode)
 {
     mext2_file* fd = reserve_fd();
     if(fd == NULL)
@@ -44,13 +44,11 @@ mext2_file* mext2_open(struct mext2_sd* sd, char* path, uint16_t mode)
     fd->sd = sd;
     if(sd->fs.open_strategy(fd, path, mode) != MEXT2_RETURN_SUCCESS)
     {
-        mext2_error("Could not open file: %s", path);
         free_fd(fd);
         return NULL;
     }
     else
     {
-        mext2_log("Opened file: %s", path);
         return fd;
     }
 }

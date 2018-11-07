@@ -132,13 +132,13 @@ INCLUDE += -Isrc/$(FSDIR)
 OBJS += $(addprefix out/$(FSDIR)/, fs.o ext2/ext2.o)
 
 out/$(FSDIR)/ext2/ext2.o: src/$(FSDIR)/ext2/ext2.c src/$(FSDIR)/ext2/ext2.h \
- src/$(FSDIR)/ext2/superblock.h  src/$(COMMONDIR)/common.h \
- src/$(FSDIR)/ext2/inode.h src/$(FSDIR)/ext2/block_group_descriptor.h \
- src/$(FSDIR)/ext2/dir_entry.h \
- src/$(COMMONDIR)/limit.h src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h \
- src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
+ src/$(FSDIR)/ext2/superblock.h src/$(COMMONDIR)/common.h \
+ src/$(COMMONDIR)/limit.h src/$(FSDIR)/ext2/inode.h \
+ src/$(FSDIR)/ext2/block_group_descriptor.h src/$(SDDIR)/sd.h \
+ src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
  src/$(FILEDIR)/ext2/file.h src/$(FSDIR)/ext2/inode_descriptor.h \
- src/$(PLATFORMDIR)/debug.h src/$(FILEDIR)/ext2/file.h | $$(@D)/
+ src/$(PLATFORMDIR)/debug.h \
+ src/$(FSDIR)/ext2/dir_entry.h src/$(FILEDIR)/ext2/file.h | $$(@D)/
 
 out/$(FSDIR)/fs.o: src/$(FSDIR)/fs.c src/$(COMMONDIR)/common.h src/$(COMMONDIR)/limit.h \
  src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h \
@@ -158,9 +158,13 @@ out/$(FILEDIR)/file.o: src/$(FILEDIR)/file.c \
  src/$(FSDIR)/fs.h src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
  src/$(COMMONDIR)/limit.h | $$(@D)/
 
-out/$(FILEDIR)/ext2/file.o: src/$(FILEDIR)/ext2/file.c src/$(FILEDIR)/ext2/file.h \
- src/$(FSDIR)/ext2/inode_descriptor.h src/$(COMMONDIR)/common.h \
- src/$(COMMONDIR)/limit.h | $$(@D)/
+out/$(FILEDIR)/ext2/file.o: src/$(FILEDIR)/ext2/file.c src/$(FILEDIR)/file.h \
+ src/$(FILEDIR)/ext2/file.h src/$(FSDIR)/ext2/inode_descriptor.h \
+ src/$(COMMONDIR)/common.h src/$(COMMONDIR)/limit.h \
+ src/$(FILEDIR)/ext2/file.h src/$(SDDIR)/sd.h src/$(FSDIR)/fs.h \
+ src/$(FSDIR)/ext2/ext2_descriptor.h src/$(FILEDIR)/file.h \
+ src/$(PLATFORMDIR)/debug.h src/$(FSDIR)/ext2/inode.h \
+ src/$(FSDIR)/ext2/superblock.h src/$(FSDIR)/ext2/ext2.h| $$(@D)/
 
 ########## LIBRARY ###########
 lib: out/$(MAINDIR)/libmext2.so

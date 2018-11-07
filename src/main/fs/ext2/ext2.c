@@ -7,8 +7,8 @@
 #include "common.h"
 #include "debug.h"
 #include "dir_entry.h"
+#include "superblock.h"
 #include "ext2/file.h"
-
 
 uint8_t ext2_errno = EXT2_NO_ERRORS;
 
@@ -41,9 +41,9 @@ STATIC void correct_block_group_descriptor_endianess(struct mext2_ext2_block_gro
 #define INVALID_INODE_ADDRESS 0
 #define BLOCK_GROUP_DESCRIPTOR_TABLE_SUPERBLOCK_OFFSET 1
 
-struct mext2_inode_address mext2_inode_no_to_addr(struct mext2_sd* sd, uint32_t inode_no)
+struct mext2_ext2_inode* mext2_get_ext2_inode(struct mext2_sd* sd, uint32_t inode_no)
 {
-    struct mext2_inode_address address;
+
     uint32_t block_group_descriptor_block_no = ((inode_no - 1) / sd->fs.descriptor.ext2.s_inodes_per_group)
             * sizeof(struct mext2_ext2_block_group_descriptor) / EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size)
             + BLOCK_GROUP_DESCRIPTOR_TABLE_SUPERBLOCK_OFFSET + sd->fs.descriptor.ext2.s_first_data_block;
@@ -55,27 +55,26 @@ struct mext2_inode_address mext2_inode_no_to_addr(struct mext2_sd* sd, uint32_t 
     if((block = mext2_get_ext2_block(sd, block_group_descriptor_block_no)) == NULL)
     {
         mext2_error("Could not read block group descriptor", block_group_descriptor_block_no);
-        address.block_address = INVALID_INODE_ADDRESS;
         ext2_errno = EXT2_READ_ERROR;
-        return address;
+        return NULL;
     }
     struct mext2_ext2_block_group_descriptor* bgd = (struct mext2_ext2_block_group_descriptor*) (((uint8_t*)block) + block_group_in_block_offset);
 
     if(mext2_is_big_endian())
         correct_block_group_descriptor_endianess(bgd);
 
-    address.block_inode_bitmap_address = bgd->bg_block_bitmap;
-    address.inode_local_index = (inode_no - 1) % sd->fs.descriptor.ext2.s_inodes_per_group;
+    uint32_t inode_local_index = (inode_no - 1) % sd->fs.descriptor.ext2.s_inodes_per_group;
 
-    address.block_address = (bgd->bg_inode_table + ((address.inode_local_index
+    uint32_t block_address = (bgd->bg_inode_table + ((inode_local_index
             * sd->fs.descriptor.ext2.s_inode_size)
             / EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size)));
-    address.block_offset = ((address.inode_local_index * sd->fs.descriptor.ext2.s_inode_size) % EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size));
+    uint16_t block_offset = ((inode_local_index * sd->fs.descriptor.ext2.s_inode_size) % EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size));
 
-    return address;
+    return (struct mext2_ext2_inode*)(((uint8_t*)mext2_get_ext2_block(sd, block_address)) + block_offset);
+
 }
 
-STATIC void correct_inode_endianess(struct mext2_ext2_inode* inode)
+void mext2_correct_inode_endianess(struct mext2_ext2_inode* inode)
 {
     inode->i_mode = mext2_flip_endianess16(inode->i_mode);
     inode->i_uid = mext2_flip_endianess16(inode->i_uid);
@@ -129,7 +128,7 @@ STATIC uint32_t find_inode_no_direct_block(mext2_sd* sd, uint32_t direct_block_a
     {
         if(mext2_is_big_endian())
             correct_dir_entry_head_endianess(&dir_entry->head);
-        mext2_debug("Inode: %d, Record length: %d, Name length: %d, File type: %d, Name: %*s",
+        mext2_debug("Inode: %d, Record length: %d, Name length: %d, File type: %d, Name: %.*s",
             dir_entry->head.inode,
             dir_entry->head.rec_len,
             dir_entry->head.name_len,
@@ -259,27 +258,16 @@ STATIC uint32_t find_inode_no_triple_indirect_block(mext2_sd* sd, uint32_t tripl
 
 uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_inode_no, char* name)
 {
-    struct mext2_inode_address inode_address = mext2_inode_no_to_addr(sd, dir_inode_no);
-
-    if(inode_address.block_address == INVALID_INODE_ADDRESS)
-    {
-        return EXT2_INVALID_INO;
-    }
-
-    mext2_debug("Inode block address: %#hx", inode_address.block_address);
-
-    block512_t* block;
-    if((block = mext2_get_ext2_block(sd, inode_address.block_address)) == NULL)
+    struct mext2_ext2_inode* inode;
+    if((inode = mext2_get_ext2_inode(sd, dir_inode_no)) == NULL)
     {
         mext2_error("Could not read inode %d", dir_inode_no);
         ext2_errno = EXT2_READ_ERROR;
         return EXT2_INVALID_INO;
     }
 
-    struct mext2_ext2_inode* inode = (struct mext2_ext2_inode*)(((uint8_t*)block) + inode_address.block_offset);
-
     if(mext2_is_big_endian())
-        correct_inode_endianess(inode);
+        mext2_correct_inode_endianess(inode);
 
     if((inode->i_mode & EXT2_FORMAT_MASK) != EXT2_S_IFDIR)
     {
@@ -360,7 +348,6 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
     return EXT2_INVALID_INO;
 }
 
-
 STATIC char* path_tokenize(char* path)
 {
     static char* token_beggining = NULL;
@@ -370,7 +357,7 @@ STATIC char* path_tokenize(char* path)
         while(*token_beggining == MEXT2_PATH_SEPARATOR)
             token_beggining++;
 
-        if(token_beggining != '\0')
+        if(*token_beggining != '\0')
             return token_beggining;
         else
         {
@@ -389,12 +376,12 @@ STATIC char* path_tokenize(char* path)
 
     while(*token_beggining  == MEXT2_PATH_SEPARATOR)
         token_beggining++;
-    if(token_beggining != '\0')
+    if(*token_beggining != '\0')
         return token_beggining;
     else
         return NULL;
-
 }
+
 uint32_t mext2_inode_no_lookup(struct mext2_sd* sd, char* path)
 {
     if(path[0] != MEXT2_PATH_SEPARATOR)
