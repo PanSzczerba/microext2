@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include "common.h"
 
+/**** BLOCK INODE ARRAY VALUES ****/
+#define I_INDIRECT_BLOCK_INDEX 12
+#define I_DOUBLE_INDIRECT_BLOCK_INDEX 13
+#define I_TRIPLE_INDIRECT_BLOCK_INDEX 14
+
 /**** INODE VALUES ****/
 #define EXT2_INVALID_INO   0
 #define EXT2_BAD_INO         1

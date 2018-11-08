@@ -68,22 +68,22 @@ uint8_t mext2_close(mext2_file* fd)
     }
 }
 
-uint8_t mext2_write(mext2_file* fd, void* buffer, size_t count)
+size_t mext2_write(mext2_file* fd, void* buffer, size_t count)
 {
     return fd->sd->fs.write_strategy(fd, buffer, count);
 }
 
-uint8_t mext2_read(mext2_file* fd, void* buffer, size_t count)
+size_t mext2_read(mext2_file* fd, void* buffer, size_t count)
 {
     return fd->sd->fs.read_strategy(fd, buffer, count);
 }
 
-uint8_t mext2_seek(mext2_file* fd, int count)
+int mext2_seek(mext2_file* fd, int count)
 {
     return fd->sd->fs.seek_strategy(fd, count);
 }
 
-uint8_t mext2_eof(mext2_file* fd)
+mext2_bool mext2_eof(mext2_file* fd)
 {
     return fd->sd->fs.eof_strategy(fd);
 }

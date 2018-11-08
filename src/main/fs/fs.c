@@ -10,7 +10,7 @@
 #define MAGIC_OFFSET 56
 
 /******* MAGICS ********/
-#define EXT2_SUPER_MAGIC 0x53ef
+#define EXT2_SUPER_MAGIC 0xef53
 
 uint8_t mext2_fs_probe_magic_chain(mext2_sd* sd);
 

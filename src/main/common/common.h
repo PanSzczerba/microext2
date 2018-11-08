@@ -32,14 +32,27 @@ uint16_t mext2_flip_endianess16(uint16_t num);
 uint32_t mext2_flip_endianess32(uint32_t num);
 uint64_t mext2_flip_endianess64(uint64_t num);
 
-#define mext2_le_to_cpu16(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess16(num))
-#define mext2_le_to_cpu32(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess32(num))
-#define mext2_le_to_cpu64(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess64(num))
+#define mext2_le_to_cpu16(num) (mext2_is_big_endian() ? mext2_flip_endianess16(num) : (num))
+#define mext2_le_to_cpu32(num) (mext2_is_big_endian() ? mext2_flip_endianess32(num) : (num))
+#define mext2_le_to_cpu64(num) (mext2_is_big_endian() ? mext2_flip_endianess64(num) : (num))
 
-#define mext2_cpu_to_le16(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess16(num))
-#define mext2_cpu_to_le32(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess32(num))
-#define mext2_cpu_to_le64(num) (mext2_is_big_endian() ? (num) : mext2_flip_endianess64(num))
+#define mext2_cpu_to_le16(num) (mext2_is_big_endian() ? mext2_flip_endianess16(num) : (num))
+#define mext2_cpu_to_le32(num) (mext2_is_big_endian() ? mext2_flip_endianess32(num) : (num))
+#define mext2_cpu_to_le64(num) (mext2_is_big_endian() ? mext2_flip_endianess64(num) : (num))
 
 extern block512_t mext2_usefull_blocks[MEXT2_USEFULL_BLOCKS_SIZE];
+extern uint32_t mext2_errno;
+
+/**** MEXT2 ERROR CODES ****/
+enum ext2_error_codes
+{
+    MEXT2_NO_ERRORS = 0,
+    MEXT2_INVALID_PATH,
+    MEXT2_EOF,
+    MEXT2_READ_ERROR,
+    MEXT2_WRITE_ERROR,
+    /* this should be last */
+    MEXT2_UNKNOWN_ERROR
+};
 
 #endif

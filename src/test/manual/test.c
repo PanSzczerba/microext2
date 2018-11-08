@@ -54,6 +54,7 @@ void display_sd_version(mext2_sd* sd)
     printf("SD version: %s\n", sd_version_strings[sd->sd_version]);
 }
 
+#define BUFFER_SIZE 90000
 mext2_sd sd;
 
 int main(void)
@@ -83,9 +84,15 @@ int main(void)
 //    display_blocks(&sd, sd.partition_block_addr + 2, 2);
 //    display_blocks(&sd, (mext2_inode_no_to_addr(&sd, EXT2_ROOT_INO)).block_address, 1);
 //    display_blocks(&sd, 0x1960, 4096/512);
-    if(mext2_open(&sd, "/yey/dziala", MEXT2_READ) != NULL)
+    mext2_file* fd;
+    if((fd = mext2_open(&sd, "/yey/dziala", MEXT2_READ)) != NULL)
     {
         printf("Yatta\n");
+        char buffer[BUFFER_SIZE + 1];
+        size_t bytes_read = mext2_read(fd, buffer, sizeof(buffer) - 1);
+        buffer[bytes_read] = '\0';
+        printf("Read %zu bytes\n", bytes_read);
+        printf("Buffer content:\n%.*s\n", bytes_read, &buffer[0]);
     }
 
 }

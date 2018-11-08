@@ -59,9 +59,9 @@ all: lib test
 
 ########### COMMON ###########
 INCLUDE = -Isrc/$(COMMONDIR)
-OBJS += out/$(COMMONDIR)/endianess.o out/$(COMMONDIR)/blocks.o
+OBJS += out/$(COMMONDIR)/endianess.o out/$(COMMONDIR)/common.o
 
-out/$(COMMONDIR)/blocks.o: src/$(COMMONDIR)/blocks.c src/$(COMMONDIR)/common.h \
+out/$(COMMONDIR)/common.o: src/$(COMMONDIR)/common.c src/$(COMMONDIR)/common.h \
  src/$(COMMONDIR)/limit.h | $$(@D)/
 
 out/$(COMMONDIR)/endianess.o: src/$(COMMONDIR)/endianess.c src/$(COMMONDIR)/common.h \

@@ -10,8 +10,6 @@
 #include "superblock.h"
 #include "ext2/file.h"
 
-uint8_t ext2_errno = EXT2_NO_ERRORS;
-
 block512_t* mext2_get_ext2_block(struct mext2_sd* sd, uint32_t block_no)
 {
     const uint16_t ext2_block_block_size = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(block512_t);
@@ -21,6 +19,7 @@ block512_t* mext2_get_ext2_block(struct mext2_sd* sd, uint32_t block_no)
     if(mext2_read_blocks(sd, block_block_address, mext2_usefull_blocks, ext2_block_block_size) != MEXT2_RETURN_SUCCESS)
     {
         mext2_error("Can't read block no %d, at address %#x", block_no, block_block_address);
+        mext2_errno = MEXT2_READ_ERROR;
         return NULL;
     }
 
@@ -55,7 +54,6 @@ struct mext2_ext2_inode* mext2_get_ext2_inode(struct mext2_sd* sd, uint32_t inod
     if((block = mext2_get_ext2_block(sd, block_group_descriptor_block_no)) == NULL)
     {
         mext2_error("Could not read block group descriptor", block_group_descriptor_block_no);
-        ext2_errno = EXT2_READ_ERROR;
         return NULL;
     }
     struct mext2_ext2_block_group_descriptor* bgd = (struct mext2_ext2_block_group_descriptor*) (((uint8_t*)block) + block_group_in_block_offset);
@@ -117,7 +115,6 @@ STATIC uint32_t find_inode_no_direct_block(mext2_sd* sd, uint32_t direct_block_a
     block512_t* block;
     if((block = mext2_get_ext2_block(sd, direct_block_address)) == NULL)
     {
-        ext2_errno = EXT2_READ_ERROR;
         mext2_error("Could not read direct block");
         return EXT2_INVALID_INO;
     }
@@ -145,7 +142,7 @@ STATIC uint32_t find_inode_no_direct_block(mext2_sd* sd, uint32_t direct_block_a
         dir_entry = (struct mext2_ext2_dir_entry*)(((uint8_t*)block) + pos);
     }
 
-    ext2_errno = EXT2_INVALID_PATH;
+    mext2_errno = MEXT2_INVALID_PATH;
     return EXT2_INVALID_INO;
 }
 
@@ -156,30 +153,29 @@ STATIC uint32_t find_inode_no_indirect_block(mext2_sd* sd, uint32_t indirect_blo
     uint32_t inode_no;
 
     uint32_t direct_block_index = 0;
-    for(direct_block_index = 0; direct_block_index; direct_block_index++)
+    for(direct_block_index = 0; direct_block_index < EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(uint32_t); direct_block_index++)
     {
         if((direct_blocks = (uint32_t*)mext2_get_ext2_block(sd, indirect_block_address)) == NULL)
         {
-            ext2_errno = EXT2_READ_ERROR;
             mext2_error("Could not read indirect block");
             return EXT2_INVALID_INO;
         }
         if(direct_blocks[direct_block_index] == 0)
         {
-            ext2_errno = EXT2_INVALID_PATH;
+            mext2_errno = MEXT2_INVALID_PATH;
             return EXT2_INVALID_INO;
         }
 
-        ext2_errno = EXT2_NO_ERRORS;
+        mext2_errno = MEXT2_NO_ERRORS;
         if((inode_no = find_inode_no_direct_block(sd, mext2_le_to_cpu32(direct_blocks[direct_block_index]), name)) != EXT2_INVALID_INO)
             return inode_no;
 
-        if(ext2_errno != EXT2_INVALID_PATH)
+        if(mext2_errno != MEXT2_INVALID_PATH)
             return EXT2_INVALID_INO;
 
     }
 
-    ext2_errno = EXT2_INVALID_PATH;
+    mext2_errno = MEXT2_INVALID_PATH;
     return EXT2_INVALID_INO;
 }
 
@@ -190,30 +186,29 @@ STATIC uint32_t find_inode_no_double_indirect_block(mext2_sd* sd, uint32_t doubl
     uint32_t inode_no;
 
     uint32_t indirect_block_index = 0;
-    for(indirect_block_index = 0; indirect_block_index; indirect_block_index++)
+    for(indirect_block_index = 0; indirect_block_index < EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(uint32_t); indirect_block_index++)
     {
         if((indirect_blocks = (uint32_t*)mext2_get_ext2_block(sd, double_indirect_block_address)) == NULL)
         {
-            ext2_errno = EXT2_READ_ERROR;
             mext2_error("Could not read double block");
             return EXT2_INVALID_INO;
         }
         if(indirect_blocks[indirect_block_index] == 0)
         {
             mext2_error("Could not find inode number for specified path");
-            ext2_errno = EXT2_INVALID_PATH;
+            mext2_errno = MEXT2_INVALID_PATH;
             return EXT2_INVALID_INO;
         }
 
-        ext2_errno = EXT2_NO_ERRORS;
+        mext2_errno = MEXT2_NO_ERRORS;
         if((inode_no = find_inode_no_indirect_block(sd, mext2_le_to_cpu32(indirect_blocks[indirect_block_index]), name)) != EXT2_INVALID_INO)
             return inode_no;
 
-        if(ext2_errno != EXT2_INVALID_PATH)
+        if(mext2_errno != MEXT2_INVALID_PATH)
             return EXT2_INVALID_INO;
     }
 
-    ext2_errno = EXT2_INVALID_PATH;
+    mext2_errno = MEXT2_INVALID_PATH;
     return EXT2_INVALID_INO;
 }
 
@@ -224,37 +219,32 @@ STATIC uint32_t find_inode_no_triple_indirect_block(mext2_sd* sd, uint32_t tripl
     uint32_t inode_no;
 
     uint32_t double_indirect_block_index = 0;
-    for(double_indirect_block_index = 0; double_indirect_block_index; double_indirect_block_index++)
+    for(double_indirect_block_index = 0; double_indirect_block_index < EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(uint32_t); double_indirect_block_index++)
     {
         if((double_indirect_blocks = (uint32_t*)mext2_get_ext2_block(sd, triple_indirect_block_address)) == NULL)
         {
-            ext2_errno = EXT2_READ_ERROR;
             mext2_error("Could not read triple indirect block");
             return EXT2_INVALID_INO;
         }
         if(double_indirect_blocks[double_indirect_block_index] == 0)
         {
             mext2_error("Could not find inode number for specified path");
-            ext2_errno = EXT2_INVALID_PATH;
+            mext2_errno = MEXT2_INVALID_PATH;
             return EXT2_INVALID_INO;
         }
 
-        ext2_errno = EXT2_NO_ERRORS;
+        mext2_errno = MEXT2_NO_ERRORS;
         if((inode_no = find_inode_no_double_indirect_block(sd, mext2_le_to_cpu32(double_indirect_blocks[double_indirect_block_index]), name)) != EXT2_INVALID_INO)
             return inode_no;
 
-        if(ext2_errno != EXT2_INVALID_PATH)
+        if(mext2_errno != MEXT2_INVALID_PATH)
             return EXT2_INVALID_INO;
     }
 
     mext2_error("Could not find inode number for specified path");
-    ext2_errno = EXT2_INVALID_PATH;
+    mext2_errno = MEXT2_INVALID_PATH;
     return EXT2_INVALID_INO;
 }
-
-#define I_INDIRECT_BLOCK_INDEX 13
-#define I_DOUBLE_INDIRECT_BLOCK_INDEX 14
-#define I_TRIPLE_INDIRECT_BLOCK_INDEX 15
 
 uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_inode_no, char* name)
 {
@@ -262,7 +252,6 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
     if((inode = mext2_get_ext2_inode(sd, dir_inode_no)) == NULL)
     {
         mext2_error("Could not read inode %d", dir_inode_no);
-        ext2_errno = EXT2_READ_ERROR;
         return EXT2_INVALID_INO;
     }
 
@@ -272,7 +261,7 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
     if((inode->i_mode & EXT2_FORMAT_MASK) != EXT2_S_IFDIR)
     {
         mext2_error("Inode no: %d is not a directory inode", dir_inode_no);
-        ext2_errno = EXT2_INVALID_PATH;
+        mext2_errno = MEXT2_INVALID_PATH;
         return EXT2_INVALID_INO;
     }
 
@@ -288,7 +277,6 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
     blocks[I_INDIRECT_BLOCK_INDEX] = inode->i_indirect_block;
     blocks[I_DOUBLE_INDIRECT_BLOCK_INDEX] = inode->i_double_indirect_block;
     blocks[I_TRIPLE_INDIRECT_BLOCK_INDEX] = inode->i_triple_indirect_block;
-
     uint8_t direct_blocks = sizeof(inode->i_direct_block) / sizeof(inode->i_direct_block[0]) > used_blocks ?
             used_blocks : sizeof(inode->i_direct_block) / sizeof(inode->i_direct_block[0]);
 
@@ -297,7 +285,7 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
     {
         if((inode_no = find_inode_no_direct_block(sd, blocks[i], name)) == EXT2_INVALID_INO)
         {
-            if(ext2_errno != EXT2_INVALID_PATH)
+            if(mext2_errno != MEXT2_INVALID_PATH)
                 return EXT2_INVALID_INO;
         }
         else
@@ -310,7 +298,7 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
     {
         if((inode_no = find_inode_no_indirect_block(sd, blocks[I_INDIRECT_BLOCK_INDEX], name)) == EXT2_INVALID_INO)
         {
-            if(ext2_errno != EXT2_INVALID_PATH)
+            if(mext2_errno != MEXT2_INVALID_PATH)
                 return EXT2_INVALID_INO;
         }
         else
@@ -322,7 +310,7 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
         {
             if((inode_no = find_inode_no_double_indirect_block(sd, blocks[I_DOUBLE_INDIRECT_BLOCK_INDEX], name)) == EXT2_INVALID_INO)
             {
-                if(ext2_errno != EXT2_INVALID_PATH)
+                if(mext2_errno != MEXT2_INVALID_PATH)
                     return EXT2_INVALID_INO;
             }
             else
@@ -334,7 +322,7 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
             {
                 if((inode_no = find_inode_no_triple_indirect_block(sd, blocks[I_TRIPLE_INDIRECT_BLOCK_INDEX], name)) == EXT2_INVALID_INO)
                 {
-                    if(ext2_errno != EXT2_INVALID_PATH)
+                    if(mext2_errno != MEXT2_INVALID_PATH)
                         return EXT2_INVALID_INO;
                 }
                 else
@@ -387,7 +375,7 @@ uint32_t mext2_inode_no_lookup(struct mext2_sd* sd, char* path)
     if(path[0] != MEXT2_PATH_SEPARATOR)
     {
         mext2_error("Path doesn't start with '/'");
-        ext2_errno = EXT2_INVALID_PATH;
+        mext2_errno = MEXT2_INVALID_PATH;
         return EXT2_INVALID_INO;
     }
 
