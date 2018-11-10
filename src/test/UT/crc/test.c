@@ -14,7 +14,7 @@ int main(void)
         return EXIT_FAILURE;
     }
 
-    add_endianess_test_suite();
+    add_crc_test_suite();
 
     CU_basic_set_mode(CU_BRM_NORMAL);
     CU_basic_run_tests();

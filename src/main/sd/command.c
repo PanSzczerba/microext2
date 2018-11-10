@@ -74,6 +74,8 @@ STATIC enum response_type get_response_type(uint8_t command_number)
         return R1;
     case COMMAND_STOP_READ_DATA:
         return R1b;
+    case COMMAND_SEND_STATUS:
+        return R2;
     default:
         return R1;
     }
@@ -114,7 +116,9 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
     {
         mext2_debug("Response: %#hhx", response.r1);
         if(response_type == R7 || response_type == R3)
-            spi_read_write((uint8_t*) response.extended_response, 4);
+            spi_read_write(&response.extended_response[0], 4);
+        else if(response_type == R2)
+            spi_read_write(&response.extended_response[0], 1);
         wait_8_clock_cycles();
     }
 

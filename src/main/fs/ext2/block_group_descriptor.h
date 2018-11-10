@@ -1,5 +1,7 @@
 #ifndef MEXT2_FS_EXT2_BLOCK_GROUP_DESCRIPTOR_H
 #define MEXT2_FS_EXT2_BLOCK_GROUP_DESCRIPTOR_H
+#include "common.h"
+
 struct mext2_ext2_block_group_descriptor
 {
     uint32_t bg_block_bitmap;
@@ -11,6 +13,6 @@ struct mext2_ext2_block_group_descriptor
     uint16_t bg_pad;
     uint8_t  bg_reserved[12];
 
-};
+} __mext2_packed;
 
 #endif

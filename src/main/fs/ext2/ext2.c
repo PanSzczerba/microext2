@@ -10,6 +10,45 @@
 #include "superblock.h"
 #include "ext2/file.h"
 
+struct mext2_ext2_superblock* mext2_get_ext2_superblock(struct mext2_sd* sd)
+{
+    if(mext2_read_blocks(sd, sd->partition_block_addr + EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET, mext2_usefull_blocks, EXT2_SUPERBLOCK_PHYSICAL_BLOCK_SIZE) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Could not read superblock");
+        mext2_errno = MEXT2_READ_ERROR;
+        return NULL;
+    }
+
+    return (struct mext2_ext2_superblock*)&mext2_usefull_blocks[0];
+}
+
+uint8_t mext2_update_ext2_main_superblock(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock)
+{
+    if(mext2_write_blocks(sd, sd->partition_block_addr + EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET, (block512_t*)superblock, EXT2_SUPERBLOCK_PHYSICAL_BLOCK_SIZE) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Could not update superblock");
+        mext2_errno = MEXT2_WRITE_ERROR;
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+uint8_t mext2_put_ext2_block(struct mext2_sd* sd, block512_t* block, uint32_t block_no)
+{
+    const uint16_t ext2_block_block_size = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(block512_t);
+    uint32_t block_block_address = sd->partition_block_addr + block_no * ext2_block_block_size;
+
+    if(mext2_write_blocks(sd, block_block_address, block, ext2_block_block_size) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Cannot write block");
+        mext2_errno = MEXT2_WRITE_ERROR;
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
 block512_t* mext2_get_ext2_block(struct mext2_sd* sd, uint32_t block_no)
 {
     const uint16_t ext2_block_block_size = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(block512_t);
@@ -404,7 +443,16 @@ uint8_t mext2_ext2_sd_parser(struct mext2_sd* sd, struct mext2_ext2_superblock* 
 {
     uint32_t rev_level = mext2_le_to_cpu32(superblock -> s_rev_level);
 
-    sd->fs.open_file_counter = 0;
+    sd->fs.fs_flags = MEXT2_CLEAN;
+    if(mext2_le_to_cpu16(superblock->s_state) != EXT2_VALID_FS)
+    {
+        mext2_warning("Filesystem contains errors and shouldn't be used, fs_state: %#x", mext2_le_to_cpu16(superblock->s_state));
+        sd->fs.fs_flags |= MEXT2_FS_ERRORS;
+//      mext2_errno = MEXT2_ERRONEOUS_FS;
+//      return MEXT2_RETURN_FAILURE;  // to rethink  if we should return here or not
+    }
+
+    sd->fs.write_open_file_counter = 0;
 
     sd->fs.descriptor.ext2.s_inodes_count = superblock->s_inodes_count;
     sd->fs.descriptor.ext2.s_blocks_count = superblock->s_blocks_count;
@@ -456,6 +504,7 @@ uint8_t mext2_ext2_sd_parser(struct mext2_sd* sd, struct mext2_ext2_superblock* 
     if(EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) > sizeof(block512_t) * MEXT2_USEFULL_BLOCKS_SIZE)
     {
         mext2_error("Unsupported block size: %d, maximal supported block size: %d", EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size), sizeof(block512_t) * MEXT2_USEFULL_BLOCKS_SIZE );
+        mext2_errno = MEXT2_TOO_LARGE_BLOCK;
         return MEXT2_RETURN_FAILURE;
     }
     else
@@ -475,12 +524,11 @@ uint8_t mext2_ext2_sd_parser(struct mext2_sd* sd, struct mext2_ext2_superblock* 
     if(sd->fs.descriptor.ext2.s_feature_ro_compat & ~(MEXT2_FEATURES_RO_COMPAT))
     {
         mext2_warning("Detected unsupported read-only compatible features: %#x", sd->fs.descriptor.ext2.s_feature_ro_compat);
-        sd->fs.ro_flag = MEXT2_TRUE;
+        sd->fs.fs_flags |=  MEXT2_READ_ONLY;
     }
     else
     {
         mext2_log("Filesystem can be mounted read-write");
-        sd->fs.ro_flag = MEXT2_FALSE;
     }
 
     sd->fs.open_strategy = mext2_ext2_open;

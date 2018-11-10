@@ -47,10 +47,17 @@ extern uint32_t mext2_errno;
 enum ext2_error_codes
 {
     MEXT2_NO_ERRORS = 0,
+    /* FILE OPERATIONS ERRORS */
     MEXT2_INVALID_PATH,
     MEXT2_EOF,
     MEXT2_READ_ERROR,
     MEXT2_WRITE_ERROR,
+    MEXT2_RO_WRITE_TRY,
+    MEXT2_NOT_ENOUGH_FD,
+    /* FS ERRORS */
+    MEXT2_TOO_LARGE_BLOCK,
+    MEXT2_ERRONEOUS_FS,
+    MEXT2_READ_ONLY_FS,
     /* this should be last */
     MEXT2_UNKNOWN_ERROR
 };

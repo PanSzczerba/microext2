@@ -4,8 +4,13 @@
 #include "command.h"
 #include "common.h"
 #include "sd.h"
+#include "crc.h"
 
 #define SDV1X_BLOCK_ADDRESS_SHIFT 9
+
+#define START_BLOCK_TOKEN 0xfe
+#define START_BLOCK_TOKEN_MULTIPLE_WRITE 0xfc
+#define STOP_BLOCK_TOKEN_MULTIPLE_WRITE 0xfd
 
 STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
 {
@@ -25,13 +30,13 @@ STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
     if(!wait_for_response((uint8_t*)&response))
         return MEXT2_RETURN_FAILURE;
 
-    if(response.r1 != 0xfe)
+    if(response.r1 != START_BLOCK_TOKEN)
     {
         mext2_error("Received wrong data token. Token value: %#hhx", response.r1);
         return MEXT2_RETURN_FAILURE;
     }
 
-    spi_read_write(block->data, 512);
+    spi_read_write(block->data, sizeof(block512_t));
 
     wait_8_clock_cycles();
     wait_8_clock_cycles();
@@ -60,13 +65,13 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* blocks, uint8_t b
         if(wait_for_response((uint8_t*)&response) == MEXT2_RETURN_FAILURE)
             return MEXT2_RETURN_FAILURE;
 
-        if(response.r1 != 0xfe)
+        if(response.r1 != START_BLOCK_TOKEN)
         {
             mext2_error("Received wrong data token. Token value: %#hhx", response.r1);
             return MEXT2_RETURN_FAILURE;
         }
 
-        spi_read_write(blocks[i].data, 512);
+        spi_read_write(blocks[i].data, sizeof(block512_t));
 
         wait_8_clock_cycles();
         wait_8_clock_cycles();
@@ -111,6 +116,10 @@ uint8_t mext2_read_blocks(mext2_sd* sd, uint32_t index, block512_t* blocks, uint
 }
 
 //////////////////////////////////////////////////////
+#define DATA_RESPONSE_TOKEN_STATUS_MASK 0xe
+#define DATA_ACCEPTED 0x4 // 010
+#define CRC_ERROR 0xa     // 101
+#define WRITE_ERROR 0xc   // 110
 
 STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
 {
@@ -124,20 +133,38 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
         return MEXT2_RETURN_FAILURE;
     }
 
-    wait_8_clock_cycles();
-    wait_8_clock_cycles();
+    uint8_t token = START_BLOCK_TOKEN;
+    uint16_t crc = (uint16_t)crc16(&block->data[0], sizeof(block512_t));
+    if(!mext2_is_big_endian())
+        crc = mext2_flip_endianess16(crc);
+    spi_read_write(&token, sizeof(token));
+    spi_read_write(&block->data[0], sizeof(block512_t));
+    spi_read_write((uint8_t*)&crc, sizeof(crc));
 
-    spi_read_write(block -> data, 512);
-
-    wait_8_clock_cycles();
-    if(!wait_for_response((uint8_t*)&response))
-        return MEXT2_RETURN_FAILURE;
+    wait_for_response(&token);
+    uint8_t status = token & DATA_RESPONSE_TOKEN_STATUS_MASK;
 
     do
     {
-        response.r1 = 0xff;
-        spi_read_write((uint8_t*) &response, 1);
-    } while(response.r1 != 0xff);
+        token = 0xff;
+        spi_read_write(&token, sizeof(token));
+    } while(token == 0);
+
+    if(status != DATA_ACCEPTED)
+    {
+        if(status == CRC_ERROR)
+            mext2_error("CRC check error occured during single block write");
+        else if(status == WRITE_ERROR)
+            mext2_error("Write error occured during single block write");
+        else
+            mext2_error("Invalid data response token");
+
+        memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
+        response = mext2_send_command(COMMAND_SEND_STATUS, command_argument);
+        mext2_debug("R2 response %#hhx %#hhx", response.r1, response.extended_response[0]);
+
+        return MEXT2_RETURN_FAILURE;
+    }
 
     return MEXT2_RETURN_SUCCESS;
 }
@@ -154,15 +181,69 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
         return MEXT2_RETURN_FAILURE;
     }
 
+    uint8_t token;
+    uint8_t status;
     for(uint8_t i = 0; i < blocks_number; i++)
     {
         wait_8_clock_cycles();
-        wait_8_clock_cycles();
-        spi_read_write(blocks[i].data, sizeof(block512_t));
+        token = START_BLOCK_TOKEN_MULTIPLE_WRITE;
+        uint16_t crc = (uint16_t)crc16(&blocks[i].data[0], sizeof(block512_t));
+        if(!mext2_is_big_endian())
+            crc = mext2_flip_endianess16(crc);
+        spi_read_write(&token, sizeof(token));
+        spi_read_write(&blocks[i].data[0], sizeof(block512_t));
+        spi_read_write((uint8_t*)&crc, sizeof(crc));
 
-        if(!wait_for_response((uint8_t*) &response))
+        if(!wait_for_response(&token))
             return MEXT2_RETURN_FAILURE;
 
+        do
+        {
+            response.r1 = 0xff;
+            spi_read_write((uint8_t*) &response, 1);
+        } while(response.r1 == 0);
+
+        status = token & DATA_RESPONSE_TOKEN_STATUS_MASK;
+        if(status != DATA_ACCEPTED)
+        {
+            if(status == CRC_ERROR)
+                mext2_error("CRC check error occured during multiple block write");
+            else if(status == WRITE_ERROR)
+                mext2_error("Write error occured during multiple block write");
+            else
+                mext2_error("Invalid data response token");
+
+            break;
+        }
+    }
+
+    wait_8_clock_cycles();
+
+    if(status != DATA_ACCEPTED)
+    {
+        memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
+        response = mext2_send_command(COMMAND_STOP_READ_DATA, command_argument);
+        if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
+        {
+            mext2_error("Invalid response to STOP_READ_DATA command. R1 response: %#hhx", response.r1);
+            return MEXT2_RETURN_FAILURE;
+        }
+
+        memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
+        response = mext2_send_command(COMMAND_SEND_STATUS, command_argument);
+        if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
+        {
+            mext2_error("Invalid response to SEND_STATUS command. R1 response: %#hhx", response.r1);
+            return MEXT2_RETURN_FAILURE;
+        }
+        mext2_debug("R2 response %#hhx %#hhx", response.r1, response.extended_response[0]);
+    }
+    else
+    {
+        token = STOP_BLOCK_TOKEN_MULTIPLE_WRITE;
+        spi_read_write(&token, sizeof(token));
+
+        wait_8_clock_cycles();
         do
         {
             response.r1 = 0xff;
@@ -171,25 +252,10 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
     }
 
     wait_8_clock_cycles();
-
-    memset(command_argument, 0x00, COMMAND_ARGUMENT_SIZE);
-
-    response = mext2_send_command(COMMAND_STOP_READ_DATA, command_argument);
-    if((response.r1 & R1_INVALID_RESPONSE) || response.r1 != 0)
-    {
-        mext2_error("Can't read block. R1 response: %#hhx", response.r1);
+    if(status != DATA_ACCEPTED)
         return MEXT2_RETURN_FAILURE;
-    }
-
-    do
-    {
-        response.r1 = 0xff;
-        spi_read_write((uint8_t*) &response, 1);
-    } while(response.r1 == 0);
-
-
-    wait_8_clock_cycles();
-    return MEXT2_RETURN_SUCCESS;
+    else
+        return MEXT2_RETURN_SUCCESS;
 }
 
 

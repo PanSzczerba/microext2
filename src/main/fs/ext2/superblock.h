@@ -5,6 +5,11 @@
 #include "common.h"
 
 #define EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET 2 // this is physical block not partirion one
+#define EXT2_SUPERBLOCK_PHYSICAL_BLOCK_SIZE 2
+
+/**** possible s_state values ****/
+#define EXT2_VALID_FS   (uint16_t)1   // Unmounted cleanly
+#define EXT2_ERROR_FS   (uint16_t)2   // Errors detected
 
 /**** REVISION NUMBERS ****/
 #define EXT2_GOOD_OLD_REV 0

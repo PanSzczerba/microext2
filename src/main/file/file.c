@@ -24,7 +24,10 @@ STATIC mext2_file* reserve_fd()
     }
 
     if(i == MEXT2_MAX_FILE_NUMBER)
+    {
+        mext2_errno = MEXT2_NOT_ENOUGH_FD;
         return NULL; // no available file descriptors found
+    }
     else
         return &file_pool[i];
 }
@@ -37,6 +40,20 @@ STATIC void free_fd(mext2_file* fd)
 
 mext2_file* mext2_open(struct mext2_sd* sd, char* path, uint8_t mode)
 {
+    if(sd->fs.fs_flags & MEXT2_FS_ERRORS)
+    {
+        mext2_warning("Filesytem marked as containing errors");
+//      mext2_errno = MEXT2_ERRONEOUS_FS;
+//      return NULL; //same as in ext2.c
+    }
+
+    if((sd->fs.fs_flags & MEXT2_READ_ONLY) && mode != MEXT2_READ)
+    {
+        mext2_error("Filesystem marked as read only, cannot open for writing");
+        mext2_errno = MEXT2_READ_ONLY_FS;
+        return NULL;
+    }
+
     mext2_file* fd = reserve_fd();
     if(fd == NULL)
         return NULL;

@@ -7,7 +7,6 @@
 STATIC mext2_bool configured_pins = MEXT2_FALSE;
 STATIC uint64_t clock_delay = 0;
 
-
 /*********** PIN INICIALIZATION ***********/
 uint8_t configure_pins()
 {

@@ -5,6 +5,11 @@
 #include "ext2/ext2_descriptor.h"
 #include "file.h"
 
+/**** FS FLAGS ****/
+#define MEXT2_CLEAN 0
+#define MEXT2_FS_ERRORS 1
+#define MEXT2_READ_ONLY 2
+
 struct mext2_file;
 struct mext2_sd;
 
@@ -17,8 +22,8 @@ struct mext2_fs_descriptor
     mext2_close_strategy close_strategy;
     mext2_eof_strategy eof_strategy;
 
-    uint8_t open_file_counter;
-    uint8_t ro_flag;
+    uint8_t write_open_file_counter;
+    uint8_t fs_flags;
     union
     {
         mext2_ext2_descriptor ext2;

@@ -12,63 +12,10 @@
 
 #define BITS_IN_BYTE 8
 
-STATIC void fill_fd_from_inode(struct mext2_file* fd, struct mext2_ext2_inode* inode)
-{
-
-    fd->fs_specific.ext2.i_desc.i_blocks = inode->i_blocks;
-    fd->fs_specific.ext2.i_desc.i_size = (uint64_t)inode->i_size;
-
-    if(fd->sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
-        fd->fs_specific.ext2.i_desc.i_size  |= (((uint64_t)inode->i_dir_acl) << (sizeof(uint32_t) * BITS_IN_BYTE));
-}
-
-uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
-{
-    uint32_t inode_number = mext2_inode_no_lookup(fd->sd, path);
-    if(inode_number == EXT2_INVALID_INO)
-        return MEXT2_RETURN_FAILURE;
-
-    fd->fs_specific.ext2.i_desc.inode_no = inode_number;
-    struct mext2_ext2_inode* inode = mext2_get_ext2_inode(fd->sd, inode_number);
-
-    if(mext2_is_big_endian())
-        mext2_correct_inode_endianess(inode);
-
-    if((inode->i_mode & EXT2_FORMAT_MASK) != EXT2_S_IFREG)
-    {
-        mext2_error("Could not open file: Not a regular file");
-        mext2_debug("Inode mode: %#hx", inode->i_mode);
-        return MEXT2_RETURN_FAILURE;
-    }
-
-    fill_fd_from_inode(fd, inode);
-    fd->mode = mode;
-    if((mode & MEXT2_WRITE) && (mode & MEXT2_APPEND))
-    {
-        fd->fs_specific.ext2.pos_in_file = fd->fs_specific.ext2.i_desc.i_size;
-    }
-    else
-    {
-        fd->fs_specific.ext2.pos_in_file = 0;
-        fd->fs_specific.ext2.current_block = inode->i_direct_block[0];
-    }
-    mext2_debug("Opened file: %s, Inode: %d, File mode: %#hx, File size: %llu", path, inode_number, mode, fd->fs_specific.ext2.i_desc.i_size);
-
-    return MEXT2_RETURN_SUCCESS;
-}
-
-uint8_t mext2_ext2_close(struct mext2_file* fd)
-{
-    return MEXT2_RETURN_FAILURE;
-}
-
-#define FIRST_BLOCK_INDEX_IN_DOUBLE_INDIRECT(s_log_block_size) (I_INDIRECT_BLOCK_INDEX + (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t) * (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t))
-#define FIRST_BLOCK_INDEX_IN_TRIPLE_INDIRECT(s_log_block_size) (I_INDIRECT_BLOCK_INDEX + (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t) * (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t) * (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t))
 #define INVALID_BLOCK_NO 0
 
-STATIC uint32_t get_next_data_block_no(mext2_file* fd)
+STATIC uint32_t get_data_block_by_inode_index(mext2_file* fd, uint32_t block_index)
 {
-    uint32_t block_index = fd->fs_specific.ext2.pos_in_file / EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size) + 1;
     struct mext2_ext2_inode* inode;
     if((inode = mext2_get_ext2_inode(fd->sd, fd->fs_specific.ext2.i_desc.inode_no)) == NULL)
     {
@@ -98,7 +45,7 @@ STATIC uint32_t get_next_data_block_no(mext2_file* fd)
     uint32_t first_block_index_in_triple_indirect = first_block_index_in_double_indirect + block_addresses_per_block * block_addresses_per_block * block_addresses_per_block;
     if(block_index < I_INDIRECT_BLOCK_INDEX)
     {
-        mext2_debug("Block index: %d, Next data block at block: %u", block_index, inode->i_direct_block[block_index]);
+        mext2_debug("Block index: %d, Next data block at block: %u", block_index, mext2_le_to_cpu32(inode->i_direct_block[block_index]));
         return mext2_le_to_cpu32(inode->i_direct_block[block_index]);
 
     }
@@ -161,7 +108,97 @@ STATIC uint32_t get_next_data_block_no(mext2_file* fd)
 
     mext2_debug("Next data block at block: %u", mext2_le_to_cpu32(addresses[block_index - I_INDIRECT_BLOCK_INDEX]));
     return mext2_le_to_cpu32(addresses[block_index - I_INDIRECT_BLOCK_INDEX]);
+
 }
+
+STATIC uint32_t get_next_data_block_no(mext2_file* fd)
+{
+    uint32_t block_index = fd->fs_specific.ext2.pos_in_file / EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size) + 1;
+    return get_data_block_by_inode_index(fd, block_index);
+}
+
+uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
+{
+    uint32_t inode_number = mext2_inode_no_lookup(fd->sd, path);
+    if(inode_number == EXT2_INVALID_INO)
+        return MEXT2_RETURN_FAILURE;
+
+    fd->fs_specific.ext2.i_desc.inode_no = inode_number;
+    struct mext2_ext2_inode* inode = mext2_get_ext2_inode(fd->sd, inode_number);
+
+    if(mext2_is_big_endian())
+        mext2_correct_inode_endianess(inode);
+
+    if((inode->i_mode & EXT2_FORMAT_MASK) != EXT2_S_IFREG)
+    {
+        mext2_error("Could not open file: Not a regular file");
+        mext2_debug("Inode mode: %#hx", inode->i_mode);
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    fd->fs_specific.ext2.i_desc.i_blocks = inode->i_blocks;
+    fd->fs_specific.ext2.i_desc.i_size = (uint64_t)inode->i_size;
+
+    if(fd->sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
+        fd->fs_specific.ext2.i_desc.i_size  |= (((uint64_t)inode->i_dir_acl) << (sizeof(uint32_t) * BITS_IN_BYTE));
+
+    fd->fs_specific.ext2.pos_in_file = 0;
+    fd->fs_specific.ext2.current_block = inode->i_direct_block[0];
+
+    fd->mode = mode;
+    if(mode & MEXT2_WRITE)
+    {
+        if(++fd->sd->fs.write_open_file_counter == 1)
+        {
+            struct mext2_ext2_superblock* superblock;
+            if((superblock = mext2_get_ext2_superblock(fd->sd)) == NULL)
+                return MEXT2_RETURN_FAILURE;
+
+            mext2_debug("Superblock magic: %#hx", superblock->s_magic);
+
+            superblock->s_state = mext2_cpu_to_le16(EXT2_ERROR_FS);
+            if(mext2_update_ext2_main_superblock(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
+                return MEXT2_RETURN_FAILURE;
+        }
+
+        if(mode & MEXT2_APPEND)
+        {
+            fd->fs_specific.ext2.pos_in_file = fd->fs_specific.ext2.i_desc.i_size;
+            fd->fs_specific.ext2.current_block = get_data_block_by_inode_index(fd, fd->fs_specific.ext2.pos_in_file / EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size));
+        }
+    }
+    mext2_debug("Opened file: %s, Inode: %d, File mode: %#hx, File size: %llu", path, inode_number, mode, fd->fs_specific.ext2.i_desc.i_size);
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+uint8_t mext2_ext2_close(struct mext2_file* fd)
+{
+    if(fd->mode & MEXT2_WRITE)
+    {
+        if(--fd->sd->fs.write_open_file_counter == 0)
+        {
+            struct mext2_ext2_superblock* superblock;
+            if((superblock = mext2_get_ext2_superblock(fd->sd)) == NULL)
+                return MEXT2_RETURN_FAILURE;
+
+            mext2_debug("Superblock magic: %#hx", superblock->s_magic);
+
+            if(fd->sd->fs.fs_flags & MEXT2_ERRONEOUS_FS)
+                superblock->s_state = mext2_cpu_to_le16(EXT2_ERROR_FS);
+            else
+                superblock->s_state = mext2_cpu_to_le16(EXT2_VALID_FS);
+
+            if(mext2_update_ext2_main_superblock(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
+                return MEXT2_RETURN_FAILURE;
+        }
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+#define FIRST_BLOCK_INDEX_IN_DOUBLE_INDIRECT(s_log_block_size) (I_INDIRECT_BLOCK_INDEX + (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t) * (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t))
+#define FIRST_BLOCK_INDEX_IN_TRIPLE_INDIRECT(s_log_block_size) (I_INDIRECT_BLOCK_INDEX + (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t) * (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t) * (EXT2_BLOCK_SIZE(s_log_block_size) / uint32_t))
 
 size_t mext2_ext2_write(struct mext2_file* fd, void* buffer, size_t count)
 {
