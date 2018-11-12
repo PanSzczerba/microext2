@@ -3,7 +3,7 @@ AR=ar
 MKDIR=mkdir
 RM=rm
 ECHO=echo
-CFLAGS= -std=c99 -Wall -Wno-packed-bitfield-compat 
+CFLAGS= -std=c99 -pedantic-errors -Wall -Wno-packed-bitfield-compat 
 LIBCFLAGS= -fPIC 
 
 

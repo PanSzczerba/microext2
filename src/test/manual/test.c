@@ -85,14 +85,18 @@ int main(void)
 //    display_blocks(&sd, (mext2_inode_no_to_addr(&sd, EXT2_ROOT_INO)).block_address, 1);
 //    display_blocks(&sd, 0x1960, 4096/512);
     mext2_file* fd;
-    if((fd = mext2_open(&sd, "/yey/dziala", MEXT2_RW)) != NULL)
+    if((fd = mext2_open(&sd, "/yey/dziala", MEXT2_RW | MEXT2_TRUNCATE)) != NULL)
     {
         printf("Yatta\n");
         char buffer[BUFFER_SIZE + 1];
-        size_t bytes_read = mext2_read(fd, buffer, sizeof(buffer) - 1);
-        buffer[bytes_read] = '\0';
-        printf("Read %zu bytes\n", bytes_read);
-        printf("Buffer content:\n%.*s\n", bytes_read, &buffer[0]);
+        size_t total_bytes;
+        while(mext2_errno != MEXT2_EOF)
+        {
+            size_t bytes_read = mext2_read(fd, buffer, sizeof(buffer) - 1);
+            total_bytes += bytes_read;
+            buffer[bytes_read] = '\0';
+            printf("%.*s", bytes_read, &buffer[0]);
+        }
         if(mext2_close(fd) != MEXT2_RETURN_SUCCESS)
             printf("Cannot close fd\n");
     }

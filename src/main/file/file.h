@@ -21,7 +21,8 @@ enum mext2_file_mode
     MEXT2_READ = 0x1,
     MEXT2_WRITE = 0x2,
     MEXT2_RW = 0x3,
-    MEXT2_APPEND = 0x4
+    MEXT2_APPEND = 0x4,
+    MEXT2_TRUNCATE = 0x8
 };
 
 typedef struct mext2_file

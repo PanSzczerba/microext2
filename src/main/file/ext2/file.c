@@ -12,16 +12,15 @@
 
 #define BITS_IN_BYTE 8
 
-#define INVALID_BLOCK_NO 0
-
 STATIC uint32_t get_data_block_by_inode_index(mext2_file* fd, uint32_t block_index)
 {
+    mext2_errno = MEXT2_NO_ERRORS;
     struct mext2_ext2_inode* inode;
-    if((inode = mext2_get_ext2_inode(fd->sd, fd->fs_specific.ext2.i_desc.inode_no)) == NULL)
+    if((inode = mext2_get_ext2_inode_by_no(fd->sd, fd->fs_specific.ext2.i_desc.inode_no)) == NULL)
     {
-        return INVALID_BLOCK_NO;
+        return EXT2_INVALID_BLOCK_NO;
     }
-
+/*
     mext2_debug("Inode block addresses: %#x %#x %#x %#x %#x %#x %#x %#x %#x %#x %#x %#x %#x %#x %#x",
             inode->i_direct_block[0],
             inode->i_direct_block[1],
@@ -39,13 +38,14 @@ STATIC uint32_t get_data_block_by_inode_index(mext2_file* fd, uint32_t block_ind
             inode->i_double_indirect_block,
             inode->i_triple_indirect_block
              );
+ */
 
     uint32_t block_addresses_per_block = EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size) / sizeof(uint32_t);
-    uint32_t first_block_index_in_double_indirect = I_INDIRECT_BLOCK_INDEX +  block_addresses_per_block * block_addresses_per_block;
-    uint32_t first_block_index_in_triple_indirect = first_block_index_in_double_indirect + block_addresses_per_block * block_addresses_per_block * block_addresses_per_block;
+    uint32_t first_block_index_in_double_indirect = I_INDIRECT_BLOCK_INDEX + block_addresses_per_block;
+    uint32_t first_block_index_in_triple_indirect = first_block_index_in_double_indirect + block_addresses_per_block * block_addresses_per_block;
     if(block_index < I_INDIRECT_BLOCK_INDEX)
     {
-        mext2_debug("Block index: %d, Next data block at block: %u", block_index, mext2_le_to_cpu32(inode->i_direct_block[block_index]));
+        mext2_debug("Block index: %u, Next data block at block: %u", block_index, mext2_le_to_cpu32(inode->i_direct_block[block_index]));
         return mext2_le_to_cpu32(inode->i_direct_block[block_index]);
 
     }
@@ -53,6 +53,7 @@ STATIC uint32_t get_data_block_by_inode_index(mext2_file* fd, uint32_t block_ind
     uint32_t* addresses;
     if(block_index >= first_block_index_in_triple_indirect)
     {
+        mext2_debug("Next data block in triple indirect block");
         uint32_t triple_indirect_index = (block_index - first_block_index_in_triple_indirect) / (block_addresses_per_block * block_addresses_per_block);
         uint32_t double_indirect_index = (block_index - first_block_index_in_triple_indirect) % (block_addresses_per_block * block_addresses_per_block) / block_addresses_per_block;
         uint32_t indirect_index = (block_index - first_block_index_in_triple_indirect) % (block_addresses_per_block * block_addresses_per_block) % block_addresses_per_block;
@@ -60,54 +61,57 @@ STATIC uint32_t get_data_block_by_inode_index(mext2_file* fd, uint32_t block_ind
         if((addresses = (uint32_t*)mext2_get_ext2_block(fd->sd, mext2_le_to_cpu32(inode->i_triple_indirect_block))) == NULL)
         {
             mext2_error("Can't read triple_indirect block");
-            return INVALID_BLOCK_NO;
+            return EXT2_INVALID_BLOCK_NO;
         }
 
         if((addresses = (uint32_t*)mext2_get_ext2_block(fd->sd, mext2_le_to_cpu32(addresses[triple_indirect_index]))) == NULL)
         {
             mext2_error("Can't read double indirect block");
-            return INVALID_BLOCK_NO;
+            return EXT2_INVALID_BLOCK_NO;
         }
 
         if((addresses = (uint32_t*)mext2_get_ext2_block(fd->sd, mext2_le_to_cpu32(addresses[double_indirect_index]))) == NULL)
         {
             mext2_error("Can't read indirect block");
-            return INVALID_BLOCK_NO;
+            return EXT2_INVALID_BLOCK_NO;
         }
 
-        mext2_debug("Next data block at block: %u", mext2_le_to_cpu32(addresses[indirect_index]));
+        mext2_debug("Block index: %u, Next data at block: %u", block_index, mext2_le_to_cpu32(addresses[indirect_index]));
         return mext2_le_to_cpu32(addresses[indirect_index]);
     }
-
-    if(block_index >= first_block_index_in_double_indirect)
+    else if(block_index >= first_block_index_in_double_indirect)
     {
-        uint32_t double_indirect_index = (block_index - first_block_index_in_double_indirect) % (block_addresses_per_block * block_addresses_per_block) / block_addresses_per_block;
-        uint32_t indirect_index = (block_index - first_block_index_in_double_indirect) % (block_addresses_per_block * block_addresses_per_block) % block_addresses_per_block;
+        mext2_debug("Next data block in double indirect block");
+        uint32_t double_indirect_index = (block_index - first_block_index_in_double_indirect) / block_addresses_per_block;
+        uint32_t indirect_index = (block_index - first_block_index_in_double_indirect) % block_addresses_per_block;
 
         if((addresses = (uint32_t*)mext2_get_ext2_block(fd->sd, mext2_le_to_cpu32(inode->i_double_indirect_block))) == NULL)
         {
             mext2_error("Can't read double block");
-            return INVALID_BLOCK_NO;
+            return EXT2_INVALID_BLOCK_NO;
         }
 
         if((addresses = (uint32_t*)mext2_get_ext2_block(fd->sd, mext2_le_to_cpu32(addresses[double_indirect_index]))) == NULL)
         {
             mext2_error("Can't read indirect block");
-            return INVALID_BLOCK_NO;
+            return EXT2_INVALID_BLOCK_NO;
         }
 
-        mext2_log("Next data block at block: ", mext2_le_to_cpu32(addresses[indirect_index]));
+        mext2_debug("Block index: %u, Next data at block: %u", block_index, mext2_le_to_cpu32(addresses[indirect_index]));
         return mext2_le_to_cpu32(addresses[indirect_index]);
     }
-
-    if((addresses = (uint32_t*)mext2_get_ext2_block(fd->sd, inode->i_indirect_block)) == NULL)
+    else
     {
-        mext2_error("Can't read indirect block");
-        return INVALID_BLOCK_NO;
-    }
+        mext2_debug("Next data block in indirect block");
+        if((addresses = (uint32_t*)mext2_get_ext2_block(fd->sd, inode->i_indirect_block)) == NULL)
+        {
+            mext2_error("Can't read indirect block");
+            return EXT2_INVALID_BLOCK_NO;
+        }
 
-    mext2_debug("Next data block at block: %u", mext2_le_to_cpu32(addresses[block_index - I_INDIRECT_BLOCK_INDEX]));
-    return mext2_le_to_cpu32(addresses[block_index - I_INDIRECT_BLOCK_INDEX]);
+        mext2_debug("Block index: %u, Next data block at block: %u", block_index, mext2_le_to_cpu32(addresses[block_index - I_INDIRECT_BLOCK_INDEX]));
+        return mext2_le_to_cpu32(addresses[block_index - I_INDIRECT_BLOCK_INDEX]);
+    }
 
 }
 
@@ -124,10 +128,19 @@ uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
         return MEXT2_RETURN_FAILURE;
 
     fd->fs_specific.ext2.i_desc.inode_no = inode_number;
-    struct mext2_ext2_inode* inode = mext2_get_ext2_inode(fd->sd, inode_number);
+    struct mext2_ext2_inode_address inode_address;
+    struct mext2_ext2_inode* inode;
+    if((inode_address = mext2_get_ext2_inode_address(fd->sd, inode_number)).block_address == EXT2_INVALID_BLOCK_NO)
+    {
+        mext2_error("Could not lookup inode %u address", inode_number);
+        return MEXT2_RETURN_FAILURE;
+    }
 
-    if(mext2_is_big_endian())
-        mext2_correct_inode_endianess(inode);
+    if((inode = mext2_get_ext2_inode(fd->sd, inode_address)) == NULL)
+    {
+        mext2_error("Could not read inode %u, block %x", inode_number, inode_address.block_address);
+        return MEXT2_RETURN_FAILURE;
+    }
 
     if((inode->i_mode & EXT2_FORMAT_MASK) != EXT2_S_IFREG)
     {
@@ -135,12 +148,6 @@ uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
         mext2_debug("Inode mode: %#hx", inode->i_mode);
         return MEXT2_RETURN_FAILURE;
     }
-
-    fd->fs_specific.ext2.i_desc.i_blocks = inode->i_blocks;
-    fd->fs_specific.ext2.i_desc.i_size = (uint64_t)inode->i_size;
-
-    if(fd->sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
-        fd->fs_specific.ext2.i_desc.i_size  |= (((uint64_t)inode->i_dir_acl) << (sizeof(uint32_t) * BITS_IN_BYTE));
 
     fd->fs_specific.ext2.pos_in_file = 0;
     fd->fs_specific.ext2.current_block = inode->i_direct_block[0];
@@ -166,8 +173,29 @@ uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
             fd->fs_specific.ext2.pos_in_file = fd->fs_specific.ext2.i_desc.i_size;
             fd->fs_specific.ext2.current_block = get_data_block_by_inode_index(fd, fd->fs_specific.ext2.pos_in_file / EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size));
         }
+        else if(mode & MEXT2_TRUNCATE)
+        {
+            if(mext2_ext2_truncate(fd->sd, fd->fs_specific.ext2.i_desc.inode_no, 0) != MEXT2_RETURN_SUCCESS)
+            {
+                mext2_error("Truncating file error");
+                return MEXT2_RETURN_FAILURE;
+            }
+
+        }
     }
-    mext2_debug("Opened file: %s, Inode: %d, File mode: %#hx, File size: %llu", path, inode_number, mode, fd->fs_specific.ext2.i_desc.i_size);
+
+    if((inode = mext2_get_ext2_inode(fd->sd, inode_address)) == NULL)
+    {
+        mext2_error("Could not read inode %u, block %x", inode_number, inode_address.block_address);
+        return MEXT2_RETURN_FAILURE;
+    }
+    fd->fs_specific.ext2.i_desc.i_blocks = inode->i_blocks;
+    fd->fs_specific.ext2.i_desc.i_size = (uint64_t)inode->i_size;
+
+    if(fd->sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
+        fd->fs_specific.ext2.i_desc.i_size  |= (((uint64_t)inode->i_dir_acl) << (sizeof(uint32_t) * BITS_IN_BYTE));
+
+    mext2_debug("Opened file: %s, Inode: %u, File mode: %#hx, File size: %llu, Blocks %u", path, inode_number, mode, fd->fs_specific.ext2.i_desc.i_size, fd->fs_specific.ext2.i_desc.i_blocks);
 
     return MEXT2_RETURN_SUCCESS;
 }
@@ -207,14 +235,14 @@ size_t mext2_ext2_write(struct mext2_file* fd, void* buffer, size_t count)
 
 size_t mext2_ext2_read(struct mext2_file* fd, void* buffer, size_t count)
 {
-    mext2_debug("Reading %zu bytes", count);
+    mext2_debug("Reading %zu bytes, position in file: %llu, file size: %llu", count, fd->fs_specific.ext2.pos_in_file, fd->fs_specific.ext2.i_desc.i_size);
     if(count == 0)
         return 0;
 
     if(fd->fs_specific.ext2.pos_in_file == fd->fs_specific.ext2.i_desc.i_size)
     {
         mext2_errno = MEXT2_EOF;
-        mext2_error("Cannot read past the end of the file");
+        mext2_warning("Cannot read past the end of the file");
         return 0;
     }
 
@@ -228,9 +256,9 @@ size_t mext2_ext2_read(struct mext2_file* fd, void* buffer, size_t count)
     uint64_t bytes_till_eof = fd->fs_specific.ext2.i_desc.i_size - fd->fs_specific.ext2.pos_in_file;
 
     size_t bytes_to_read;
-    if(bytes_till_eof < count)
+    if((uint64_t)bytes_till_eof < count)
     {
-        bytes_to_read = bytes_till_eof;
+        bytes_to_read = (size_t)bytes_till_eof;
         mext2_errno = MEXT2_EOF;
     }
     else
@@ -244,13 +272,17 @@ size_t mext2_ext2_read(struct mext2_file* fd, void* buffer, size_t count)
     uint32_t bytes_left_in_block = EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size)- (fd->fs_specific.ext2.pos_in_file % EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size));
     while (bytes_left_in_block < bytes_to_read - bytes_read)
     {
-        memcpy(buffer + bytes_read, (void*)(data_block + EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size) - bytes_left_in_block), bytes_left_in_block);
+        mext2_debug("Bytes left to read %zu", bytes_to_read - bytes_read);
+        memcpy((void*)((uint8_t*)buffer + bytes_read), (void*)(data_block + EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size) - bytes_left_in_block), bytes_left_in_block);
         mext2_debug("Copied %zu bytes", bytes_left_in_block);
 
-        if((fd->fs_specific.ext2.current_block = get_next_data_block_no(fd)) == INVALID_BLOCK_NO)
+        if((fd->fs_specific.ext2.current_block = get_next_data_block_no(fd)) == EXT2_INVALID_BLOCK_NO)
         {
-            mext2_error("Could not read next data block number");
-            return 0;
+            if(mext2_errno != MEXT2_NO_ERRORS)
+            {
+                mext2_error("Could not read next data block number");
+                return EXT2_INVALID_BLOCK_NO;
+            }
         }
         bytes_read += bytes_left_in_block;
         fd->fs_specific.ext2.pos_in_file += bytes_left_in_block;
@@ -264,7 +296,7 @@ size_t mext2_ext2_read(struct mext2_file* fd, void* buffer, size_t count)
 
     }
 
-    memcpy(buffer + bytes_read, (void*)data_block, bytes_to_read - bytes_read);
+    memcpy((void*)((uint8_t*)buffer + bytes_read), (void*)data_block, bytes_to_read - bytes_read);
     mext2_debug("Copied %zu bytes", bytes_to_read - bytes_read);
     fd->fs_specific.ext2.pos_in_file += bytes_to_read - bytes_read;
 

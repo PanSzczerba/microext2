@@ -72,6 +72,10 @@ struct mext2_ext2_inode
 
 } __mext2_packed;
 
-void mext2_correct_inode_endianess(struct mext2_ext2_inode* inode);
+struct mext2_ext2_inode_address
+{
+    uint32_t block_address;
+    uint16_t block_offset;
+};
 
 #endif

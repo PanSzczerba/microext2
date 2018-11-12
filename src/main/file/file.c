@@ -87,7 +87,14 @@ uint8_t mext2_close(mext2_file* fd)
 
 size_t mext2_write(mext2_file* fd, void* buffer, size_t count)
 {
-    return fd->sd->fs.write_strategy(fd, buffer, count);
+    if((fd->mode & MEXT2_WRITE) == 0)
+    {
+        mext2_error("Can't write to file opened in read-only mode");
+        mext2_errno = MEXT2_RO_WRITE_TRY;
+        return 0;
+    }
+    else
+        return fd->sd->fs.write_strategy(fd, buffer, count);
 }
 
 size_t mext2_read(mext2_file* fd, void* buffer, size_t count)
