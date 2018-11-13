@@ -158,13 +158,13 @@ uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
         if(++fd->sd->fs.write_open_file_counter == 1)
         {
             struct mext2_ext2_superblock* superblock;
-            if((superblock = mext2_get_ext2_superblock(fd->sd)) == NULL)
+            if((superblock = mext2_get_main_ext2_superblock(fd->sd)) == NULL)
                 return MEXT2_RETURN_FAILURE;
 
             mext2_debug("Superblock magic: %#hx", superblock->s_magic);
 
             superblock->s_state = mext2_cpu_to_le16(EXT2_ERROR_FS);
-            if(mext2_update_ext2_main_superblock(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
+            if(mext2_update_ext2_main_superblock_with_ptr(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
                 return MEXT2_RETURN_FAILURE;
         }
 
@@ -207,7 +207,7 @@ uint8_t mext2_ext2_close(struct mext2_file* fd)
         if(--fd->sd->fs.write_open_file_counter == 0)
         {
             struct mext2_ext2_superblock* superblock;
-            if((superblock = mext2_get_ext2_superblock(fd->sd)) == NULL)
+            if((superblock = mext2_get_main_ext2_superblock(fd->sd)) == NULL)
                 return MEXT2_RETURN_FAILURE;
 
             mext2_debug("Superblock magic: %#hx", superblock->s_magic);
@@ -217,7 +217,7 @@ uint8_t mext2_ext2_close(struct mext2_file* fd)
             else
                 superblock->s_state = mext2_cpu_to_le16(EXT2_VALID_FS);
 
-            if(mext2_update_ext2_main_superblock(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
+            if(mext2_update_ext2_main_superblock_with_ptr(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
                 return MEXT2_RETURN_FAILURE;
         }
     }

@@ -30,7 +30,9 @@ struct block512_t* mext2_get_ext2_block(struct mext2_sd* sd, uint32_t block_no);
 uint8_t mext2_put_ext2_block(struct mext2_sd* sd, block512_t* block, uint32_t block_no);
 
 /* superblock get/set */
-struct mext2_ext2_superblock* mext2_get_ext2_superblock(struct mext2_sd* sd);
-uint8_t mext2_update_ext2_main_superblock(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock);
+struct mext2_ext2_superblock* mext2_get_main_ext2_superblock(struct mext2_sd* sd);
+uint8_t mext2_update_ext2_main_superblock_with_ptr(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock);
+uint8_t mext2_update_ext2_main_superblock(struct mext2_sd* sd);
+uint8_t mext2_update_superblocks(struct mext2_sd* sd);
 
 #endif

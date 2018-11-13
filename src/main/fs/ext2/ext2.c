@@ -88,7 +88,12 @@ STATIC int compare_block_numbers (const void * block1, const void * block2)
     ((block_group_no) \
     % ((ext2_block_size) / sizeof(struct mext2_ext2_block_group_descriptor)))
 
-STATIC uint8_t deallocate_blocks(mext2_sd* sd, uint32_t* block_list, uint32_t block_list_size)
+STATIC uint16_t allocate_blocks(mext2_sd* sd, uint16_t block_group_no, uint32_t* block_list, uint16_t blocks_to_allocate)
+{
+    return 0;
+}
+
+STATIC uint8_t deallocate_blocks(mext2_sd* sd, uint32_t* block_list, uint16_t block_list_size)
 {
     const uint32_t ext2_block_size = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size);
     qsort((void*)block_list, block_list_size, sizeof(uint32_t), compare_block_numbers);
@@ -479,6 +484,10 @@ uint8_t mext2_ext2_truncate(mext2_sd* sd, uint32_t inode_no, uint64_t new_size)
         return MEXT2_RETURN_FAILURE;
     }
 
+    sd->fs.descriptor.ext2.s_free_blocks_count += current_block_size - (last_block_index_to_leave + 1);
+
+    mext2_update_ext2_main_superblock(sd);
+
     if(blocks_in_list != 0)
     {
         mext2_debug("Blocks in list: %u, deallocating", blocks_in_list);
@@ -494,7 +503,7 @@ uint8_t mext2_ext2_truncate(mext2_sd* sd, uint32_t inode_no, uint64_t new_size)
     return MEXT2_RETURN_SUCCESS;
 }
 
-struct mext2_ext2_superblock* mext2_get_ext2_superblock(struct mext2_sd* sd)
+struct mext2_ext2_superblock* mext2_get_main_ext2_superblock(struct mext2_sd* sd)
 {
     if(mext2_read_blocks(sd, sd->partition_block_addr + EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET, mext2_usefull_blocks, EXT2_SUPERBLOCK_PHYSICAL_BLOCK_SIZE) != MEXT2_RETURN_SUCCESS)
     {
@@ -506,13 +515,121 @@ struct mext2_ext2_superblock* mext2_get_ext2_superblock(struct mext2_sd* sd)
     return (struct mext2_ext2_superblock*)&mext2_usefull_blocks[0];
 }
 
-uint8_t mext2_update_ext2_main_superblock(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock)
+uint8_t mext2_update_ext2_main_superblock_with_ptr(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock)
 {
+    mext2_debug("Superblock magic: %#hx", superblock->s_magic);
+
     if(mext2_write_blocks(sd, sd->partition_block_addr + EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET, (block512_t*)superblock, EXT2_SUPERBLOCK_PHYSICAL_BLOCK_SIZE) != MEXT2_RETURN_SUCCESS)
     {
-        mext2_error("Could not update superblock");
+        mext2_error("Could not update main superblock");
         mext2_errno = MEXT2_WRITE_ERROR;
         return MEXT2_RETURN_FAILURE;
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+uint8_t mext2_update_ext2_main_superblock(struct mext2_sd* sd)
+{
+    struct mext2_ext2_superblock* superblock;
+    if((superblock = mext2_get_main_ext2_superblock(sd)) == NULL)
+        return MEXT2_RETURN_FAILURE;
+
+    mext2_debug("Superblock magic: %#hx", mext2_le_to_cpu16(superblock->s_magic));
+
+    if(mext2_is_big_endian())
+    {
+        superblock->s_free_blocks_count = mext2_flip_endianess32(sd->fs.descriptor.ext2.s_free_blocks_count);
+        superblock->s_free_inodes_count = mext2_flip_endianess32(sd->fs.descriptor.ext2.s_free_inodes_count);
+    }
+    else
+    {
+        superblock->s_free_blocks_count = sd->fs.descriptor.ext2.s_free_blocks_count;
+        superblock->s_free_inodes_count = sd->fs.descriptor.ext2.s_free_inodes_count;
+    }
+
+    if(mext2_update_ext2_main_superblock_with_ptr(sd, superblock) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Could not update main superblock");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+STATIC uint8_t update_superblock_group_no(struct mext2_sd* sd, struct mext2_ext2_superblock superblock, uint16_t block_group_no)
+{
+    if(block_group_no == 0)
+    {
+        mext2_warning("Trying to update superblock at group 0 with update_superblock_group_no, use mext2_update_ext2_main_superblock instead");
+        superblock->s_block_group_nr = 0;
+        mext2_update_ext2_main_superblock_with_ptr(sd, superblock);
+    }
+
+    uint32_t superblock_block_no = block_group_no * sd->fs.descriptor.ext2.s_blocks_per_group;
+    superblock->s_block_group_nr = mext2_cpu_to_le16(block_group_no);
+
+    if(mext2_write_blocks(sd, sd->partition_block_addr + superblock_block_no * (EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(block512_t)), (block512_t*)superblock, EXT2_SUPERBLOCK_PHYSICAL_BLOCK_SIZE) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Could not update superblock no %u", block_group_no);
+        mext2_errno = MEXT2_WRITE_ERROR;
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+uint8_t mext2_update_superblocks(struct mext2_sd* sd)
+{
+
+    struct mext2_ext2_superblock* superblock;
+    if((superblock = mext2_get_main_ext2_superblock(sd)) == NULL)
+        return MEXT2_RETURN_FAILURE;
+
+    mext2_debug("Superblock magic: %#hx", mext2_le_to_cpu16(superblock->s_magic));
+
+    if(mext2_is_big_endian())
+    {
+        superblock->s_free_blocks_count = mext2_flip_endianess32(sd->fs.descriptor.ext2.s_free_blocks_count);
+        superblock->s_free_inodes_count = mext2_flip_endianess32(sd->fs.descriptor.ext2.s_free_inodes_count);
+    }
+    else
+    {
+        superblock->s_free_blocks_count = sd->fs.descriptor.ext2.s_free_blocks_count;
+        superblock->s_free_inodes_count = sd->fs.descriptor.ext2.s_free_inodes_count;
+    }
+
+    if(mext2_update_ext2_main_superblock_with_ptr(sd, superblock) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Could not update main superblock");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    uint16_t block_groups_count = (superblock->s_blocks_count + superblock->s_blocks_per_group - 1) / superblock->s_blocks_per_group;
+    if(sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)
+    {
+        if(block_groups_count > 1 && update_superblock_group_no(sd, superblock, 1) != MEXT2_RETURN_SUCCESS)
+            return MEXT2_RETURN_FAILURE;
+
+        if(block_groups_count > 3)
+            for(uint16_t block_group = 3; block_group < block_groups_count; block_group *= 3)
+                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+                    return MEXT2_RETURN_FAILURE;
+
+        if(block_groups_count > 5)
+            for(uint16_t block_group = 5; block_group < block_groups_count; block_group *= 5)
+                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+                    return MEXT2_RETURN_FAILURE;
+
+        if(block_groups_count > 7)
+            for(uint16_t block_group = 7; block_group < block_groups_count; block_group *= 7)
+                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+                    return MEXT2_RETURN_FAILURE;
+    }
+    else
+    {
+        for(uint16_t i = 0; i < block_groups_count; i++)
+            update_superblock_group_no(sd, superblock, i);
     }
 
     return MEXT2_RETURN_SUCCESS;
