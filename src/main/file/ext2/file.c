@@ -14,7 +14,6 @@
 
 STATIC uint32_t get_data_block_by_inode_index(mext2_file* fd, uint32_t block_index)
 {
-    mext2_errno = MEXT2_NO_ERRORS;
     struct mext2_ext2_inode* inode;
     if((inode = mext2_get_ext2_inode_by_no(fd->sd, fd->fs_specific.ext2.i_desc.inode_no)) == NULL)
     {
@@ -164,7 +163,7 @@ uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
             mext2_debug("Superblock magic: %#hx", superblock->s_magic);
 
             superblock->s_state = mext2_cpu_to_le16(EXT2_ERROR_FS);
-            if(mext2_update_ext2_main_superblock_with_ptr(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
+            if(mext2_update_ext2_superblocks_with_ptr(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
                 return MEXT2_RETURN_FAILURE;
         }
 
@@ -212,12 +211,12 @@ uint8_t mext2_ext2_close(struct mext2_file* fd)
 
             mext2_debug("Superblock magic: %#hx", superblock->s_magic);
 
-            if(fd->sd->fs.fs_flags & MEXT2_ERRONEOUS_FS)
+            if(fd->sd->fs.fs_flags & MEXT2_FS_ERRORS)
                 superblock->s_state = mext2_cpu_to_le16(EXT2_ERROR_FS);
             else
                 superblock->s_state = mext2_cpu_to_le16(EXT2_VALID_FS);
 
-            if(mext2_update_ext2_main_superblock_with_ptr(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
+            if(mext2_update_ext2_superblocks_with_ptr(fd->sd, superblock) != MEXT2_RETURN_SUCCESS)
                 return MEXT2_RETURN_FAILURE;
         }
     }
@@ -276,6 +275,7 @@ size_t mext2_ext2_read(struct mext2_file* fd, void* buffer, size_t count)
         memcpy((void*)((uint8_t*)buffer + bytes_read), (void*)(data_block + EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size) - bytes_left_in_block), bytes_left_in_block);
         mext2_debug("Copied %zu bytes", bytes_left_in_block);
 
+        mext2_errno = MEXT2_NO_ERRORS;
         if((fd->fs_specific.ext2.current_block = get_next_data_block_no(fd)) == EXT2_INVALID_BLOCK_NO)
         {
             if(mext2_errno != MEXT2_NO_ERRORS)

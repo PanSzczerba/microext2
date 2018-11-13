@@ -6,7 +6,7 @@
 #include "common.h"
 
 #define EXT2_BLOCK_SIZE(s_log_block_size) (1024 << s_log_block_size)
-#define EXT2_BLOCK_GROUP_DESCRIPTOR_BLOCK_OFFSET 1
+#define EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET 1
 
 #define EXT2_INVALID_BLOCK_NO 0
 
@@ -33,6 +33,7 @@ uint8_t mext2_put_ext2_block(struct mext2_sd* sd, block512_t* block, uint32_t bl
 struct mext2_ext2_superblock* mext2_get_main_ext2_superblock(struct mext2_sd* sd);
 uint8_t mext2_update_ext2_main_superblock_with_ptr(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock);
 uint8_t mext2_update_ext2_main_superblock(struct mext2_sd* sd);
-uint8_t mext2_update_superblocks(struct mext2_sd* sd);
+uint8_t mext2_update_ext2_superblocks(struct mext2_sd* sd);
+uint8_t mext2_update_ext2_superblocks_with_ptr(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock);
 
 #endif

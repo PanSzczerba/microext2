@@ -90,7 +90,56 @@ STATIC int compare_block_numbers (const void * block1, const void * block2)
 
 STATIC uint16_t allocate_blocks(mext2_sd* sd, uint16_t block_group_no, uint32_t* block_list, uint16_t blocks_to_allocate)
 {
-    return 0;
+
+    const uint32_t ext2_block_size = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size);
+    block512_t* block;
+    struct mext2_ext2_block_group_descriptor* block_group_descriptor;
+    if((block = mext2_get_ext2_block(
+            sd,
+            BGD_BLOCK_NO(block_group_no, ext2_block_size, sd->fs.descriptor.ext2.s_first_data_block)))
+        == NULL)
+    {
+        mext2_error("Could not read block group descriptor");
+        return 0;
+    }
+
+    block_group_descriptor = (struct mext2_ext2_block_group_descriptor*)block;
+    block_group_descriptor += BGD_BLOCK_OFFSET(block_group_no, ext2_block_size);
+
+    uint32_t block_bitmap_block = mext2_le_to_cpu32(block_group_descriptor->bg_block_bitmap);
+    uint8_t* block_bitmap;
+
+    if((block_bitmap = (uint8_t*)mext2_get_ext2_block(sd, block_bitmap_block)) == NULL)
+    {
+        mext2_error("Cannot fetch block bitmap at block %u", block_bitmap_block);
+        return 0;
+    }
+
+    uint32_t first_block_in_block_group = block_group_no * sd->fs.descriptor.ext2.s_blocks_per_group;
+
+    uint16_t blocks_allocated = 0;
+    uint32_t blocks_in_bitmap = sd->fs.descriptor.ext2.s_blocks_per_group;
+    for(uint32_t i = 0; i < blocks_in_bitmap && blocks_allocated < blocks_to_allocate; i++)
+    {
+        if(i == ext2_block_size * BITS_IN_BYTE)
+        {
+            if((block_bitmap = (uint8_t*)mext2_get_ext2_block(sd, ++block_bitmap_block)) == NULL)
+            {
+                mext2_error("Cannot fetch block bitmap at block %u", block_bitmap_block);
+                return 0;
+            }
+
+            i = 0;
+            blocks_in_bitmap -= ext2_block_size * BITS_IN_BYTE;
+        }
+
+        if(!(block_bitmap[i / BITS_IN_BYTE] & (1 << (i % BITS_IN_BYTE))))
+        {
+            block_list[blocks_allocated++] = first_block_in_block_group + i;
+        }
+    }
+
+    return blocks_allocated;
 }
 
 STATIC uint8_t deallocate_blocks(mext2_sd* sd, uint32_t* block_list, uint16_t block_list_size)
@@ -557,7 +606,7 @@ uint8_t mext2_update_ext2_main_superblock(struct mext2_sd* sd)
     return MEXT2_RETURN_SUCCESS;
 }
 
-STATIC uint8_t update_superblock_group_no(struct mext2_sd* sd, struct mext2_ext2_superblock superblock, uint16_t block_group_no)
+STATIC uint8_t update_superblock_group_no(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock, uint16_t block_group_no)
 {
     if(block_group_no == 0)
     {
@@ -579,7 +628,62 @@ STATIC uint8_t update_superblock_group_no(struct mext2_sd* sd, struct mext2_ext2
     return MEXT2_RETURN_SUCCESS;
 }
 
-uint8_t mext2_update_superblocks(struct mext2_sd* sd)
+uint8_t mext2_update_ext2_superblocks_with_ptr(struct mext2_sd* sd, struct mext2_ext2_superblock* superblock)
+{
+    if(mext2_update_ext2_main_superblock_with_ptr(sd, superblock) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Could not update main superblock");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    uint16_t block_groups_count = (superblock->s_blocks_count + superblock->s_blocks_per_group - 1) / superblock->s_blocks_per_group;
+    if(sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)
+    {
+        if(block_groups_count > 1 && update_superblock_group_no(sd, superblock, 1) != MEXT2_RETURN_SUCCESS)
+        {
+            mext2_error("Could not update superblock in block group %u", 1);
+            return MEXT2_RETURN_FAILURE;
+        }
+
+        if(block_groups_count > 3)
+            for(uint16_t block_group = 3; block_group < block_groups_count; block_group *= 3)
+                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+                {
+                    mext2_error("Could not update superblock in block group %u", block_group);
+                    return MEXT2_RETURN_FAILURE;
+                }
+
+        if(block_groups_count > 5)
+            for(uint16_t block_group = 5; block_group < block_groups_count; block_group *= 5)
+                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+                {
+                    mext2_error("Could not update superblock in block group %u", block_group);
+                    return MEXT2_RETURN_FAILURE;
+                }
+
+        if(block_groups_count > 7)
+            for(uint16_t block_group = 7; block_group < block_groups_count; block_group *= 7)
+                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+                {
+                    mext2_error("Could not update superblock in block group %u", block_group);
+                    return MEXT2_RETURN_FAILURE;
+                }
+    }
+    else
+    {
+        for(uint16_t block_group = 1; block_group < block_groups_count; block_group++)
+            if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+            {
+
+                mext2_error("Could not update superblock in block group %u", block_group);
+                return MEXT2_RETURN_FAILURE;
+            }
+    }
+
+    return MEXT2_RETURN_SUCCESS;
+}
+
+uint8_t mext2_update_ext2_superblocks(struct mext2_sd* sd)
 {
 
     struct mext2_ext2_superblock* superblock;
@@ -599,37 +703,67 @@ uint8_t mext2_update_superblocks(struct mext2_sd* sd)
         superblock->s_free_inodes_count = sd->fs.descriptor.ext2.s_free_inodes_count;
     }
 
-    if(mext2_update_ext2_main_superblock_with_ptr(sd, superblock) != MEXT2_RETURN_SUCCESS)
-    {
-        mext2_error("Could not update main superblock");
-        return MEXT2_RETURN_FAILURE;
-    }
+    return mext2_update_ext2_superblocks_with_ptr(sd, superblock);
+}
 
-    uint16_t block_groups_count = (superblock->s_blocks_count + superblock->s_blocks_per_group - 1) / superblock->s_blocks_per_group;
-    if(sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)
+uint8_t mext2_update_ext2_block_group_descriptors(struct mext2_sd* sd)
+{
+    const uint32_t ext2_block_size = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size);
+    const uint16_t block_groups_count = (sd->fs.descriptor.ext2.s_blocks_count + sd->fs.descriptor.ext2.s_blocks_per_group - 1) / sd->fs.descriptor.ext2.s_blocks_per_group;
+
+    const uint8_t block_group_descriptors_block_size = (block_groups_count * sizeof(struct mext2_ext2_block_group_descriptor) + ext2_block_size - 1) / ext2_block_size;
+
+    block512_t* block;
+    for(uint8_t i = 0; i < block_group_descriptors_block_size; i++)
     {
-        if(block_groups_count > 1 && update_superblock_group_no(sd, superblock, 1) != MEXT2_RETURN_SUCCESS)
+        if((block = mext2_get_ext2_block(sd, sd->fs.descriptor.ext2.s_first_data_block + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i)) == NULL)
+        {
+            mext2_error("Could not read block group descriptors block", sd->fs.descriptor.ext2.s_first_data_block + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i);
             return MEXT2_RETURN_FAILURE;
+        }
 
-        if(block_groups_count > 3)
-            for(uint16_t block_group = 3; block_group < block_groups_count; block_group *= 3)
-                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
-                    return MEXT2_RETURN_FAILURE;
+        if(sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER)
+        {
+            if(block_groups_count > 1 && mext2_put_ext2_block(sd, block, sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i) != MEXT2_RETURN_SUCCESS)
+            {
+                mext2_error("Cannot update block group descriptor in group %u at block %u", 1, sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i);
+                return MEXT2_RETURN_FAILURE;
+            }
 
-        if(block_groups_count > 5)
-            for(uint16_t block_group = 5; block_group < block_groups_count; block_group *= 5)
-                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
-                    return MEXT2_RETURN_FAILURE;
+            if(block_groups_count > 3)
+                for(uint16_t block_group = 3; block_group < block_groups_count; block_group *= 3)
+                    if(mext2_put_ext2_block(sd, block, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i) != MEXT2_RETURN_SUCCESS)
+                    {
+                        mext2_error("Cannot update block group descriptor in group %u at block %u", block_group, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i);
+                        return MEXT2_RETURN_FAILURE;
+                    }
 
-        if(block_groups_count > 7)
-            for(uint16_t block_group = 7; block_group < block_groups_count; block_group *= 7)
-                if(update_superblock_group_no(sd, superblock, block_group) != MEXT2_RETURN_SUCCESS)
+            if(block_groups_count > 5)
+                for(uint16_t block_group = 5; block_group < block_groups_count; block_group *= 5)
+                    if(mext2_put_ext2_block(sd, block, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i) != MEXT2_RETURN_SUCCESS)
+                    {
+                        mext2_error("Cannot update block group descriptor in group %u at block %u", block_group, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i);
+                        return MEXT2_RETURN_FAILURE;
+                    }
+
+            if(block_groups_count > 7)
+                for(uint16_t block_group = 7; block_group < block_groups_count; block_group *= 7)
+                    if(mext2_put_ext2_block(sd, block, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i) != MEXT2_RETURN_SUCCESS)
+                    {
+                        mext2_error("Cannot update block group descriptor in group %u at block %u", block_group, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i);
+                        return MEXT2_RETURN_FAILURE;
+                    }
+
+        }
+        else
+        {
+            for(uint16_t block_group = 1; block_group < block_groups_count; block_group++)
+                if(mext2_put_ext2_block(sd, block, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i) != MEXT2_RETURN_SUCCESS)
+                {
+                    mext2_error("Cannot update block group descriptor in group %u at block %u", block_group, block_group * sd->fs.descriptor.ext2.s_blocks_per_group + EXT2_BLOCK_GROUP_DESCRIPTOR_FST_BLOCK_OFFSET + i);
                     return MEXT2_RETURN_FAILURE;
-    }
-    else
-    {
-        for(uint16_t i = 0; i < block_groups_count; i++)
-            update_superblock_group_no(sd, superblock, i);
+                }
+        }
     }
 
     return MEXT2_RETURN_SUCCESS;
