@@ -583,7 +583,7 @@ uint8_t mext2_ext2_inode_truncate(mext2_sd* sd, uint32_t inode_no, uint64_t new_
     }
 
     uint16_t blocks_in_list = 0;
-    uint16_t current_block_size = MEXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
+    uint16_t current_block_size = EXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
     if(current_block_size == last_block_index_to_leave + 1)
     {
         mext2_debug("Truncated 0 blocks");
@@ -1372,7 +1372,7 @@ uint32_t mext2_inode_no_lookup_from_dir_inode(struct mext2_sd* sd, uint32_t dir_
 
 
     uint32_t blocks[15];
-    uint32_t used_blocks = inode->i_blocks / (2 << sd->fs.descriptor.ext2.s_log_block_size);
+    uint32_t used_blocks = EXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
 
     memcpy(blocks, &inode->i_direct_block, sizeof(inode->i_direct_block) / sizeof(inode->i_direct_block[0]));
     blocks[I_INDIRECT_BLOCK_INDEX] = inode->i_indirect_block;
@@ -1480,7 +1480,7 @@ STATIC uint8_t mext2_inode_address_insert_new_blocks(struct mext2_sd* sd, struct
         return MEXT2_RETURN_FAILURE;
     }
 
-    uint32_t ext2_blocks_count = MEXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
+    uint32_t ext2_blocks_count = EXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
     uint32_t block_addresses_per_block = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(uint32_t);
     uint32_t first_block_index_in_double_indirect = I_INDIRECT_BLOCK_INDEX + block_addresses_per_block;
     uint32_t first_block_index_in_triple_indirect = first_block_index_in_double_indirect + block_addresses_per_block * block_addresses_per_block;
@@ -1917,7 +1917,7 @@ uint8_t mext2_ext2_inode_extend(struct mext2_sd* sd, struct mext2_ext2_inode_add
     uint16_t new_block_size = (new_size + EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) - 1)
             / EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size);
     uint16_t blocks_to_allocate =  new_block_size
-            - MEXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
+            - EXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
     uint16_t blocks_allocated = 0;
 
     while(blocks_allocated < blocks_to_allocate)
@@ -1977,7 +1977,7 @@ uint8_t mext2_ext2_insert_dir_entry(struct mext2_sd* sd, uint32_t dir_inode, str
         return MEXT2_RETURN_FAILURE;
     }
 
-    uint32_t inode_index = MEXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size) - 1;
+    uint32_t inode_index = EXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size) - 1;
     block512_t* block;
     uint32_t block_no;
     if((block_no = mext2_get_data_block_by_inode_index(sd, inode, inode_index)) == EXT2_INVALID_BLOCK_NO)
@@ -1998,7 +1998,7 @@ uint8_t mext2_ext2_insert_dir_entry(struct mext2_sd* sd, uint32_t dir_inode, str
     while(dir_entry_pos + mext2_le_to_cpu16(current_dir_entry->head.rec_len) < EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) - 1)
     {
         dir_entry_pos += mext2_le_to_cpu16(current_dir_entry->head.rec_len);
-        current_dir_entry = (struct mext2_ext2_dir_entry*)((uint8_t*) + dir_entry_pos);
+        current_dir_entry = (struct mext2_ext2_dir_entry*)((uint8_t*)block + dir_entry_pos);
     }
 
     uint16_t current_dir_entry_minimal_size = sizeof(struct mext2_ext2_dir_entry_head) + mext2_le_to_cpu16(current_dir_entry->head.name_len);
