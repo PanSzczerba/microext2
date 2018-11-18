@@ -5,7 +5,6 @@
 #include "limit.h"
 #include "common.h"
 
-#define BITS_IN_BYTE 8
 #define FILE_DESC_BITMAP_SIZE ((MEXT2_MAX_FILE_NUMBER + BITS_IN_BYTE - 1) / BITS_IN_BYTE)
 
 STATIC mext2_file file_pool[MEXT2_MAX_FILE_NUMBER];

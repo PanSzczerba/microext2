@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include "common.h"
 
+#define MEXT2_INODE_BLOCK_SIZE(i_blocks, s_log_block_size) ((i_blocks) / (2 << (s_log_block_size)))
+
 /**** BLOCK INODE ARRAY VALUES ****/
 #define I_INDIRECT_BLOCK_INDEX 12
 #define I_DOUBLE_INDIRECT_BLOCK_INDEX 13

@@ -1,7 +1,5 @@
 #include "common.h"
 
-#define BITS_IN_BYTE 8
-
 uint8_t mext2_is_big_endian(void)
 {
     union

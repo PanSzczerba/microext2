@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "common.h"
 
-#define EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET 2 // this is physical block not partirion one
+#define EXT2_SUPERBLOCK_PARTITION_BLOCK_OFFSET 2 // this is physical block not partition one
 #define EXT2_SUPERBLOCK_PHYSICAL_BLOCK_SIZE 2
 
 /**** possible s_state values ****/

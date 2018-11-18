@@ -6,6 +6,8 @@
 
 #define STATIC static
 
+#define BITS_IN_BYTE 8
+
 #define __mext2_packed __attribute__((packed))
 
 // Boolean values
@@ -55,6 +57,7 @@ enum ext2_error_codes
     MEXT2_RO_WRITE_TRY,
     MEXT2_NOT_ENOUGH_FD,
     /* FS ERRORS */
+    MEXT2_INODE_BITMAP_FULL,
     MEXT2_INVALID_BLOCK_NO,
     MEXT2_DIR_INODE_TREATED_AS_REGULAR,
     MEXT2_TOO_LARGE_BLOCK,
