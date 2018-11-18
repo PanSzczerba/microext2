@@ -587,7 +587,6 @@ uint8_t mext2_ext2_inode_truncate(mext2_sd* sd, uint32_t inode_no, uint64_t new_
     if(current_block_size == last_block_index_to_leave + 1)
     {
         mext2_debug("Truncated 0 blocks");
-        return MEXT2_RETURN_SUCCESS;
     }
 
     uint32_t indirect_block_no = inode->i_indirect_block;
@@ -2140,6 +2139,7 @@ uint32_t mext2_get_regular_file_inode(struct mext2_sd* sd, char* path, mext2_boo
 
         memset((void*)inode, 0, sizeof(struct mext2_ext2_inode));
         inode->i_mode = EXT2_S_IFREG | EXT2_S_IRUSR | EXT2_S_IWUSR;
+        inode->i_links_count = 1;
 
         if(mext2_put_ext2_inode(sd, inode, inode_address) != MEXT2_RETURN_SUCCESS)
         {

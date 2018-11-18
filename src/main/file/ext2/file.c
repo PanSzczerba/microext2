@@ -92,7 +92,7 @@ uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
     if(fd->sd->fs.descriptor.ext2.s_feature_ro_compat & EXT2_FEATURE_RO_COMPAT_LARGE_FILE)
         fd->fs_specific.ext2.i_desc.i_size  |= (((uint64_t)inode->i_dir_acl) << (sizeof(uint32_t) * BITS_IN_BYTE));
 
-    mext2_debug("Opened file: %s, Inode: %u, File mode: %#hx, File size: %llu, Blocks %u", path, inode_number, mode, fd->fs_specific.ext2.i_desc.i_size, fd->fs_specific.ext2.i_desc.i_blocks);
+    mext2_debug("Opened file: %s, Inode: %u, File mode: %#hx, File size: %llu, Blocks: %u, Permissions: %#hx", path, inode_number, mode, fd->fs_specific.ext2.i_desc.i_size, fd->fs_specific.ext2.i_desc.i_blocks, inode->i_mode);
 
     return MEXT2_RETURN_SUCCESS;
 }

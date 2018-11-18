@@ -85,12 +85,12 @@ int main(void)
 //    display_blocks(&sd, (mext2_inode_no_to_addr(&sd, EXT2_ROOT_INO)).block_address, 1);
 //    display_blocks(&sd, 0x1960, 4096/512);
     mext2_file* fd;
-    if((fd = mext2_open(&sd, "/yey/dziala2", MEXT2_RW)) != NULL)
+    if((fd = mext2_open(&sd, "/yey/dziala2", MEXT2_RW | MEXT2_TRUNCATE)) != NULL)
     {
         printf("Yatta\n");
         char buffer[] = "ala ma kota";
         size_t bytes_written;
-        mext2_write(fd, buffer, sizeof(buffer));
+        mext2_write(fd, buffer, strlen(buffer));
         if(mext2_close(fd) != MEXT2_RETURN_SUCCESS)
             printf("Cannot close fd\n");
     }
