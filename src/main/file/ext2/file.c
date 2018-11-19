@@ -278,5 +278,5 @@ int mext2_ext2_seek(struct mext2_file* fd, int count)
 
 mext2_bool mext2_ext2_eof(struct mext2_file* fd)
 {
-    return MEXT2_RETURN_FAILURE;
+    return fd->fs_specific.ext2.pos_in_file == fd->fs_specific.ext2.i_desc.i_size;
 }

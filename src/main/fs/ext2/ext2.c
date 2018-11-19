@@ -141,6 +141,7 @@ STATIC uint16_t mext2_allocate_blocks_one_group(mext2_sd* sd, uint16_t block_gro
         if(!(block_bitmap[i / BITS_IN_BYTE] & (1 << (i % BITS_IN_BYTE))))
         {
             block_list[blocks_allocated++] = first_block_in_block_group_block + i;
+            mext2_debug("Successfully allocated block %u", first_block_in_block_group_block + i);
             block_bitmap[i / BITS_IN_BYTE] |= (1 << (i % BITS_IN_BYTE));
         }
     }
@@ -151,6 +152,25 @@ STATIC uint16_t mext2_allocate_blocks_one_group(mext2_sd* sd, uint16_t block_gro
         return MEXT2_RETURN_FAILURE;
     }
 
+    if((block = mext2_get_ext2_block(
+            sd,
+            BGD_BLOCK_NO(block_group_no, ext2_block_size, sd->fs.descriptor.ext2.s_first_data_block)))
+        == NULL)
+    {
+        mext2_error("Could not read block group descriptor");
+        return 0;
+    }
+
+    block_group_descriptor = (struct mext2_ext2_block_group_descriptor*)block;
+    block_group_descriptor += BGD_BLOCK_OFFSET(block_group_no, ext2_block_size);
+
+    block_group_descriptor->bg_free_blocks_count = mext2_cpu_to_le16(mext2_le_to_cpu16(block_group_descriptor->bg_free_blocks_count) - blocks_allocated);
+    if(mext2_put_ext2_block(sd, block,
+            BGD_BLOCK_NO(block_group_no, ext2_block_size, sd->fs.descriptor.ext2.s_first_data_block)) != MEXT2_RETURN_SUCCESS)
+    {
+        mext2_error("Could not update block group descriptor no %u, at block %u", block_group_no, BGD_BLOCK_NO(block_group_no, ext2_block_size, sd->fs.descriptor.ext2.s_first_data_block));
+        return blocks_allocated;
+    }
 
     mext2_debug("Allocated %hu blocks in group %hu", blocks_allocated, block_group_no);
     return blocks_allocated;
@@ -526,7 +546,7 @@ uint32_t mext2_get_data_block_by_inode_index(struct mext2_sd* sd, struct mext2_e
     }
     else
     {
-        mext2_debug("Next data block in indirect block");
+        mext2_debug("Next data block in indirect block %u",inode->i_indirect_block);
         if((addresses = (uint32_t*)mext2_get_ext2_block(sd, inode->i_indirect_block)) == NULL)
         {
             mext2_error("Can't read indirect block");
@@ -584,6 +604,11 @@ uint8_t mext2_ext2_inode_truncate(mext2_sd* sd, uint32_t inode_no, uint64_t new_
 
     uint16_t blocks_in_list = 0;
     uint16_t current_block_size = EXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
+    if(current_block_size == 0)
+    {
+        mext2_debug("No blocks in this inode, cannot truncate");
+        return MEXT2_RETURN_SUCCESS;
+    }
     if(current_block_size == last_block_index_to_leave + 1)
     {
         mext2_debug("Truncated 0 blocks");
@@ -798,6 +823,28 @@ STATIC uint32_t allocate_ext2_inode_one_group(mext2_sd* sd, uint16_t block_group
                 mext2_error("Could not update inode bitmap at block %u", inode_bitmap_block);
                 return MEXT2_RETURN_FAILURE;
             }
+
+            if((block = mext2_get_ext2_block(
+                    sd,
+                    BGD_BLOCK_NO(block_group_no, ext2_block_size, sd->fs.descriptor.ext2.s_first_data_block)))
+                == NULL)
+            {
+                mext2_error("Could not read block group descriptor");
+                return 0;
+            }
+
+            block_group_descriptor = (struct mext2_ext2_block_group_descriptor*)block;
+            block_group_descriptor += BGD_BLOCK_OFFSET(block_group_no, ext2_block_size);
+
+            block_group_descriptor->bg_free_inodes_count = mext2_cpu_to_le16(mext2_le_to_cpu16(block_group_descriptor->bg_free_inodes_count) - 1);
+            if(mext2_put_ext2_block(sd, block,
+                    BGD_BLOCK_NO(block_group_no, ext2_block_size, sd->fs.descriptor.ext2.s_first_data_block)) != MEXT2_RETURN_SUCCESS)
+            {
+                mext2_error("Could not update block group descriptor no %u, at block %u", block_group_no,
+                        BGD_BLOCK_NO(block_group_no, ext2_block_size, sd->fs.descriptor.ext2.s_first_data_block));
+                return EXT2_INVALID_INO;
+            }
+
             mext2_debug("Succesfully allocated inode %u", first_inode_in_block_group + i);
             return first_inode_in_block_group + i;
         }
@@ -1236,7 +1283,7 @@ STATIC uint32_t find_inode_no_direct_block(mext2_sd* sd, uint32_t direct_block_a
             dir_entry->head.name_len,
             dir_entry->name
         );
-        if(strncmp(name, &dir_entry->name[0], strlen(&name[0])) == 0)
+        if(dir_entry->head.inode != EXT2_INVALID_INO && strncmp(name, &dir_entry->name[0], strlen(&name[0])) == 0)
         {
             mext2_log("Inode number %d found for: '%s'", dir_entry->head.inode, name);
             return dir_entry->head.inode;
@@ -1555,7 +1602,14 @@ STATIC uint8_t mext2_inode_address_insert_new_blocks(struct mext2_sd* sd, struct
                                                                                     && inserted_blocks < block_list_length; block_index++)
             {
                 indirect_block[block_index] = mext2_cpu_to_le32(block_list[inserted_blocks++]);
+                mext2_debug("Inserted new block %u at index %u", indirect_block[block_index], ext2_blocks_count);
                 ext2_blocks_count++;
+            }
+
+            if(mext2_put_ext2_block(sd, (block512_t*)indirect_block, indirect_block_no) != MEXT2_RETURN_SUCCESS)
+            {
+                mext2_error("Could not update indirect block %u after clearing", indirect_block_no);
+                return MEXT2_RETURN_FAILURE;
             }
         }
         else if(ext2_blocks_count < first_block_index_in_triple_indirect)
@@ -1665,6 +1719,7 @@ STATIC uint8_t mext2_inode_address_insert_new_blocks(struct mext2_sd* sd, struct
                         && inserted_blocks < block_list_length ; block_index++)
                 {
                     indirect_block[block_index] = mext2_cpu_to_le32(block_list[inserted_blocks++]);
+                    mext2_debug("Inserted new block %u at index %u", indirect_block[block_index], ext2_blocks_count);
                     ext2_blocks_count++;
                 }
 
@@ -1838,6 +1893,7 @@ STATIC uint8_t mext2_inode_address_insert_new_blocks(struct mext2_sd* sd, struct
                             && inserted_blocks < block_list_length ; block_index++)
                     {
                         indirect_block[block_index] = mext2_cpu_to_le32(block_list[inserted_blocks++]);
+                        mext2_debug("Inserted new block %u at index %u", indirect_block[block_index], ext2_blocks_count);
                         ext2_blocks_count++;
                     }
 
@@ -1945,6 +2001,19 @@ uint8_t mext2_ext2_inode_extend(struct mext2_sd* sd, struct mext2_ext2_inode_add
 
     inode->i_size = new_size;
 
+    mext2_debug("Resized inode to size %llu, i_blocks: %u, first inode direct block %u", new_size, inode->i_blocks, inode->i_direct_block[0]);
+    mext2_log("Inode direct blocks: %u %u %u %u %u %u %u %u %u %u %u",
+            inode->i_direct_block[0],
+            inode->i_direct_block[1],
+            inode->i_direct_block[2],
+            inode->i_direct_block[3],
+            inode->i_direct_block[4],
+            inode->i_direct_block[5],
+            inode->i_direct_block[6],
+            inode->i_direct_block[8],
+            inode->i_direct_block[9],
+            inode->i_direct_block[10]
+            );
     if(mext2_put_ext2_inode(sd, inode, inode_address) != MEXT2_RETURN_SUCCESS)
     {
         mext2_error("Could not write to inode at block %u for size update", inode_address.block_address);
