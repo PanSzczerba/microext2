@@ -39,6 +39,8 @@ struct mbr
     uint16_t boot_signature;
 } __mext2_packed;
 
+#define MBR_BOOT_SIGNATURE 0xaa55
+
 STATIC uint8_t reset_software()
 {
     //set CMD0
@@ -56,7 +58,7 @@ STATIC uint8_t check_voltage_range(mext2_sd* sd)
     //set CMD8
     uint8_t command_argument[] = {0x00, 0x00, 0x01, 0xaa};
     mext2_response response = mext2_send_command(COMMAND_CHECK_VOLTAGE, command_argument);
-    mext2_debug("R7 response payload: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+    mext2_debug("R7 response payload: %#hhx %#hhx %#hhx %#hhx", response.extended_response[0], response.extended_response[1],
             response.extended_response[2], response.extended_response[3]);
 
     if(response.r1 & R1_INVALID_RESPONSE)
@@ -75,7 +77,7 @@ STATIC uint8_t read_voltage_range(mext2_sd* sd)
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     mext2_response response = mext2_send_command(COMMAND_READ_OCR, command_argument);
-    mext2_debug("OCR register content: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+    mext2_debug("OCR register content: %#hhx %#hhx %#hhx %#hhx", response.extended_response[0], response.extended_response[1],
             response.extended_response[2], response.extended_response[3]);
 
     if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
@@ -98,7 +100,7 @@ STATIC uint8_t read_CCS(mext2_sd* sd)
     //set CMD58
     uint8_t command_argument[] = {0x00, 0x00, 0x00, 0x00};
     mext2_response response = mext2_send_command(COMMAND_READ_OCR, command_argument);
-    mext2_debug("OCR register content: 0x%hhx 0x%hhx 0x%hhx 0x%hhx", response.extended_response[0], response.extended_response[1],
+    mext2_debug("OCR register content: %#hhx %#hhx %#hhx %#hhx", response.extended_response[0], response.extended_response[1],
             response.extended_response[2], response.extended_response[3]);
 
     if((response.r1 & R1_INVALID_RESPONSE) || (response.r1 & R1_ILLEGAL_COMMAND) == true)
@@ -168,16 +170,16 @@ STATIC uint8_t read_CSD_register(mext2_sd* sd)
 
     if(buffer == 0xfe)
     {
-        spi_read_write(csd_register, 16);
+        mext2_spi_read_write(csd_register, 16);
     }
     else if(buffer == 0x0 || buffer == 0x40)
     {
         csd_register[0] = buffer;
-        spi_read_write(csd_register + 1, 15);
+        mext2_spi_read_write(csd_register + 1, 15);
     }
     else
     {
-        mext2_error("Invalid CSD register token: 0x%hhx", buffer);
+        mext2_error("Invalid CSD register token: %#hhx", buffer);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -208,9 +210,15 @@ STATIC uint8_t parse_MBR(mext2_sd* sd)
     if(mext2_is_big_endian())
         correct_MBR_endianess(mbr_ptr);
 
+    if(mbr_ptr->boot_signature != MBR_BOOT_SIGNATURE)
+    {
+        mext2_error("Invalid MBR boot signature: %#hx", mbr_ptr->boot_signature);
+        return MEXT2_RETURN_FAILURE;
+    }
+
     if(mbr_ptr->partitions[0].is_bootable != 0x0 && mbr_ptr->partitions[0].is_bootable != 0x80)
     {
-        mext2_error("Invalid partition info - wrong bootable flag: 0x%hhx", mbr_ptr->partitions[0].is_bootable);
+        mext2_error("Invalid partition info - wrong bootable flag: %#hhx", mbr_ptr->partitions[0].is_bootable);
         return MEXT2_RETURN_FAILURE;
     }
 
@@ -220,13 +228,13 @@ STATIC uint8_t parse_MBR(mext2_sd* sd)
         return MEXT2_RETURN_FAILURE;
     }
 
-    mext2_debug("Partiton type: 0x%hhx", mbr_ptr->partitions[0].part_type);
+    mext2_debug("Partiton type: %#hhx", mbr_ptr->partitions[0].part_type);
 
     sd->partition_block_addr = mbr_ptr->partitions[0].lba_address;
-    mext2_debug("Partition address 0x%x", sd->partition_block_addr);
+    mext2_debug("Partition address %#x", sd->partition_block_addr);
 
     sd->partition_block_size = mbr_ptr->partitions[0].sector_count;
-    mext2_debug("Partition block size 0x%x", sd->partition_block_size);
+    mext2_debug("Partition block size %#x", sd->partition_block_size);
 
     return MEXT2_RETURN_SUCCESS;
 }
@@ -247,6 +255,12 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 {
     uint8_t sd_state = SD_IDLE;
     sd ->  sd_version = SD_NOT_DETERMINED;
+    sd ->  fs.read_strategy  = NULL;
+    sd ->  fs.write_strategy = NULL;
+    sd ->  fs.open_strategy  = NULL;
+    sd ->  fs.close_strategy = NULL;
+    sd ->  fs.eof_strategy   = NULL;
+    sd ->  fs.seek_strategy  = NULL;
 
     while(1)
     {
@@ -254,9 +268,9 @@ uint8_t mext2_sd_init(mext2_sd* sd)
         {
             case SD_ERROR:
             {
-                reset_pins();
+                mext2_reset_pins();
                 sd -> sd_initialized = FALSE;
-                set_clock_frequency(MAX_CLOCK_FREQUENCY);
+                mext2_set_clock_frequency(MAX_CLOCK_FREQUENCY);
                 return MEXT2_RETURN_FAILURE;
             }
             break;
@@ -264,7 +278,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             case SD_INITIALIZED:
             {
                 sd -> sd_initialized = TRUE;
-                set_clock_frequency(MAX_CLOCK_FREQUENCY);
+                mext2_set_clock_frequency(MAX_CLOCK_FREQUENCY);
                 goto done;
             }
             break;
@@ -282,7 +296,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 
             case SD_CONFIGURE_PINS:
             {
-                if(configure_pins() == MEXT2_RETURN_FAILURE)
+                if(mext2_configure_pins() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Pin initialization failed.");
                     sd_state = SD_ERROR;
@@ -293,7 +307,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 
             case SD_RESET_SOFTWARE:
             {
-                set_clock_frequency(100000);
+                mext2_set_clock_frequency(100000);
 
                 mext2_delay(1);
                 mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
@@ -338,7 +352,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
                 if(prepare_init_process() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Cannot prepare for initialization process.");
-                    reset_pins();
+                    mext2_reset_pins();
                     sd_state = SD_ERROR;
                 } else sd_state = SD_START_INIT_PROCESS;
             }
@@ -370,8 +384,8 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             {
                 if(read_CSD_register(sd) == MEXT2_RETURN_FAILURE)
                 {
-                    mext2_error("CSD register read failed.");
-                    reset_pins();
+                    mext2_error("CSD register read_strategy failed.");
+                    mext2_reset_pins();
                     sd_state = SD_ERROR;
                 } else sd_state = SD_INITIALIZED;
             }

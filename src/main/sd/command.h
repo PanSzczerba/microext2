@@ -15,6 +15,7 @@
 #define COMMAND_WRITE_SINGLE_BLOCK      (uint8_t)0x18   //CMD24
 #define COMMAND_WRITE_MULTIPLE_BLOCK    (uint8_t)0x19   //CMD25
 #define COMMAND_STOP_READ_DATA          (uint8_t)0x0c   //CMD12
+#define COMMAND_SEND_STATUS             (uint8_t)0x0d   //CMD13
 
 #define EXTENDED_RESPONSE_LENGTH 5
 #define COMMAND_ARGUMENT_SIZE 4

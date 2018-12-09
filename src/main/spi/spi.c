@@ -4,12 +4,11 @@
 #include "pin.h"
 #include "timing.h"
 
-STATIC uint8_t configured_pins = MEXT2_FALSE;
+STATIC mext2_bool configured_pins = MEXT2_FALSE;
 STATIC uint64_t clock_delay = 0;
 
-
 /*********** PIN INICIALIZATION ***********/
-uint8_t configure_pins()
+uint8_t mext2_configure_pins()
 {
     if(configured_pins)
     {
@@ -45,7 +44,7 @@ uint8_t configure_pins()
 
 /*********** READ/WRITE FUNCTION ***********/
 
-uint8_t spi_read_write(uint8_t* buffer, size_t buffer_size)
+uint8_t mext2_spi_read_write(uint8_t* buffer, size_t buffer_size)
 {
     if(!configured_pins)
     {
@@ -83,7 +82,7 @@ uint8_t spi_read_write(uint8_t* buffer, size_t buffer_size)
 
 /*********** RESET PINS ***********/
 
-void reset_pins()
+void mext2_reset_pins()
 {
 //  mext2_pin_set(MEXT2_PWR, MEXT2_LOW);
     mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
@@ -99,7 +98,7 @@ void reset_pins()
 /******* CLOCK FREQUENCY CHANGE ******/
 #define FREQUENCY_TO_DELAY(freq) (unsigned int)(((double)1/(2*freq)) * 1000000)
 
-void set_clock_frequency(uint64_t freq)
+void mext2_set_clock_frequency(uint64_t freq)
 {
     if(freq == MAX_CLOCK_FREQUENCY)
         clock_delay = 0;

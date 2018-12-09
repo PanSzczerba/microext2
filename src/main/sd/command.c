@@ -26,7 +26,7 @@ uint8_t wait_for_response(uint8_t* buffer)
     for(i = 0; i < N_CYCLES_TIMEOUT && *buffer == 0xff; i++)
     {
         *buffer = 0xff;
-        spi_read_write(buffer, 1);
+        mext2_spi_read_write(buffer, 1);
     }
 
     if(i >= N_CYCLES_TIMEOUT)
@@ -39,13 +39,13 @@ uint8_t wait_for_response(uint8_t* buffer)
 
 void wait_8_clock_cycles_with_buffer(uint8_t* buffer)
 {
-    spi_read_write(buffer, 1);
+    mext2_spi_read_write(buffer, 1);
 }
 
 void wait_8_clock_cycles()
 {
     uint8_t dummy = 0xff;
-    spi_read_write(&dummy, 1);
+    mext2_spi_read_write(&dummy, 1);
 }
 
 STATIC enum response_type get_response_type(uint8_t command_number)
@@ -74,6 +74,8 @@ STATIC enum response_type get_response_type(uint8_t command_number)
         return R1;
     case COMMAND_STOP_READ_DATA:
         return R1b;
+    case COMMAND_SEND_STATUS:
+        return R2;
     default:
         return R1;
     }
@@ -97,9 +99,9 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
 {
     mext2_command command;
     set_command(&command, command_number, command_argument);
-    mext2_debug("Command number sent: %hhu, command body: 0x%hhx 0x%hhx 0x%hhx 0x%hhx 0x%hhx 0x%hhx", command_number,
+    mext2_log("Command number sent: %hhu, command body: %#hhx %#hhx %#hhx %#hhx %#hhx %#hhx", command_number,
             command.index, command.argument[0], command.argument[1], command.argument[2], command.argument[3], command.crc);
-    spi_read_write((uint8_t*) &command, COMMAND_SIZE);
+    mext2_spi_read_write((uint8_t*) &command, COMMAND_SIZE);
 
     enum response_type response_type = get_response_type(command_number);
 
@@ -112,9 +114,11 @@ mext2_response mext2_send_command(uint8_t command_number, uint8_t command_argume
 
     if(wait_for_response((uint8_t*) &response))
     {
-        mext2_debug("Response: 0x%hhx", response.r1);
+        mext2_log("Response: %#hhx", response.r1);
         if(response_type == R7 || response_type == R3)
-            spi_read_write((uint8_t*) response.extended_response, 4);
+            mext2_spi_read_write(&response.extended_response[0], 4);
+        else if(response_type == R2)
+            mext2_spi_read_write(&response.extended_response[0], 1);
         wait_8_clock_cycles();
     }
 

@@ -101,7 +101,7 @@ void cmd29_test(void)
     CU_ASSERT_EQUAL(result, expected_result);
 }
 
-void add_endianess_test_suite(void)
+void add_crc_test_suite(void)
 {
 
     CU_pSuite crc_suite = CU_add_suite(TEST_SUITE_NAME, NULL, NULL);

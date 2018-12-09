@@ -2,6 +2,8 @@
 #include "debug.h"
 #include "sd.h"
 #include "command.h"
+#include "ext2/ext2.h"
+#include "file.h"
 
 #define MAX_BLOCKS_TO_READ 128
 #define BLOCK_SIZE 512
@@ -52,6 +54,7 @@ void display_sd_version(mext2_sd* sd)
     printf("SD version: %s\n", sd_version_strings[sd->sd_version]);
 }
 
+#define BUFFER_SIZE 90000
 mext2_sd sd;
 
 int main(void)
@@ -71,12 +74,34 @@ int main(void)
     {
     case MEXT2_RETURN_FAILURE:
         printf("SD initialization failure\n");
-        break;
+        return EXIT_FAILURE;
     case MEXT2_RETURN_SUCCESS:
         printf("SD initialization success\n");
         break;
     }
     display_sd_version(&sd);
     display_csd(&sd);
-    display_blocks(&sd, 0, 1);
+//    display_blocks(&sd, sd.partition_block_addr + 2, 2);
+//    display_blocks(&sd, (mext2_inode_no_to_addr(&sd, EXT2_ROOT_INO)).block_address, 1);
+//    display_blocks(&sd, 0x1960, 4096/512);
+    mext2_file* fd1;
+    mext2_file* fd2;
+    if((fd1 = mext2_open(&sd, "/yey/dziala", MEXT2_READ)) != NULL &&
+       (fd2 = mext2_open(&sd, "/yey/dziala2", MEXT2_WRITE | MEXT2_TRUNCATE)) != NULL)
+    {
+        printf("Yatta\n");
+        char buffer[BUFFER_SIZE];
+        size_t bytes_read;
+        while(!mext2_eof(fd1))
+        {
+            bytes_read = mext2_read(fd1, buffer, BUFFER_SIZE);
+            mext2_write(fd2, buffer, bytes_read);
+        }
+
+        if(mext2_close(fd1) != MEXT2_RETURN_SUCCESS)
+            printf("Cannot close fd1\n");
+        if(mext2_close(fd2) != MEXT2_RETURN_SUCCESS)
+            printf("Cannot close fd2\n");
+    }
+
 }
