@@ -271,9 +271,68 @@ size_t mext2_ext2_read(struct mext2_file* fd, void* buffer, size_t count)
     return bytes_to_read;
 }
 
-int mext2_ext2_seek(struct mext2_file* fd, int count)
+int mext2_ext2_seek(struct mext2_file* fd, uint8_t seek_mode, int count)
 {
-    return MEXT2_RETURN_FAILURE;
+    uint64_t previous_pos = fd->fs_specific.ext2.pos_in_file;
+    switch(seek_mode)
+    {
+    case MEXT2_F_BEG:
+        fd->fs_specific.ext2.pos_in_file = (uint64_t)count;
+        break;
+    case MEXT2_CURR_POS:
+        fd->fs_specific.ext2.pos_in_file += count;
+        break;
+    case MEXT2_F_END:
+        fd->fs_specific.ext2.pos_in_file = fd->fs_specific.ext2.i_desc.i_size + count;
+        break;
+    default:
+        mext2_error("Invalid seek mode %hhu", seek_mode);
+        return 0;
+    }
+
+    if(fd->fs_specific.ext2.pos_in_file >= fd->fs_specific.ext2.i_desc.i_size)
+    {
+        mext2_errno = MEXT2_EOF;
+        fd->fs_specific.ext2.pos_in_file = fd->fs_specific.ext2.i_desc.i_size;
+
+        fd->fs_specific.ext2.current_block = mext2_get_data_block_by_inode_address_index(fd->sd,
+                fd->fs_specific.ext2.i_desc.inode_address,
+                (fd->fs_specific.ext2.pos_in_file - 1) / EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size));
+
+        switch(seek_mode)
+        {
+        case MEXT2_F_BEG:
+            return fd->fs_specific.ext2.i_desc.i_size;
+        case MEXT2_CURR_POS:
+            return fd->fs_specific.ext2.i_desc.i_size - previous_pos;
+        case MEXT2_F_END:
+            return 0;
+        }
+    }
+
+    if(count < 0 && previous_pos < fd->fs_specific.ext2.pos_in_file)
+    {
+        fd->fs_specific.ext2.pos_in_file = 0;
+
+        fd->fs_specific.ext2.current_block = mext2_get_data_block_by_inode_address_index(fd->sd,
+                fd->fs_specific.ext2.i_desc.inode_address, 0);
+
+        switch(seek_mode)
+        {
+        case MEXT2_F_BEG:
+            return 0;
+        case MEXT2_CURR_POS:
+            return (- previous_pos);
+        case MEXT2_F_END:
+            return (- fd->fs_specific.ext2.i_desc.i_size);
+        }
+    }
+
+    fd->fs_specific.ext2.current_block = mext2_get_data_block_by_inode_address_index(fd->sd,
+            fd->fs_specific.ext2.i_desc.inode_address,
+            fd->fs_specific.ext2.pos_in_file / EXT2_BLOCK_SIZE(fd->sd->fs.descriptor.ext2.s_log_block_size));
+
+    return count;
 }
 
 mext2_bool mext2_ext2_eof(struct mext2_file* fd)

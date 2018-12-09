@@ -204,7 +204,14 @@ uint16_t mext2_allocate_blocks(struct mext2_sd* sd, uint16_t primary_block_group
             return 0;
     }
 
-    mext2_debug("Allocated %hu blocks in all groups", allocated_blocks);
+    // udate superblock
+    if(allocated_blocks != 0)
+    {
+        mext2_debug("Allocated %hu blocks in all groups", allocated_blocks);
+        sd->fs.descriptor.ext2.s_free_blocks_count -= allocated_blocks;
+        mext2_update_ext2_main_superblock(sd);
+    }
+
     return allocated_blocks;
 }
 
@@ -869,6 +876,14 @@ STATIC uint32_t allocate_ext2_inode(mext2_sd* sd, uint16_t primary_block_group_n
                 break;
         }
     }
+
+    if(inode_no == EXT2_INVALID_INO)
+    {
+        mext2_error("Could not allocate new inode");
+        if(mext2_errno == MEXT2_INODE_BITMAP_FULL)
+            mext2_errno = MEXT2_FS_FULL;
+    }
+
     return inode_no;
 }
 

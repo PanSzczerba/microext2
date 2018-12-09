@@ -170,12 +170,12 @@ STATIC uint8_t read_CSD_register(mext2_sd* sd)
 
     if(buffer == 0xfe)
     {
-        spi_read_write(csd_register, 16);
+        mext2_spi_read_write(csd_register, 16);
     }
     else if(buffer == 0x0 || buffer == 0x40)
     {
         csd_register[0] = buffer;
-        spi_read_write(csd_register + 1, 15);
+        mext2_spi_read_write(csd_register + 1, 15);
     }
     else
     {
@@ -268,9 +268,9 @@ uint8_t mext2_sd_init(mext2_sd* sd)
         {
             case SD_ERROR:
             {
-                reset_pins();
+                mext2_reset_pins();
                 sd -> sd_initialized = FALSE;
-                set_clock_frequency(MAX_CLOCK_FREQUENCY);
+                mext2_set_clock_frequency(MAX_CLOCK_FREQUENCY);
                 return MEXT2_RETURN_FAILURE;
             }
             break;
@@ -278,7 +278,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             case SD_INITIALIZED:
             {
                 sd -> sd_initialized = TRUE;
-                set_clock_frequency(MAX_CLOCK_FREQUENCY);
+                mext2_set_clock_frequency(MAX_CLOCK_FREQUENCY);
                 goto done;
             }
             break;
@@ -296,7 +296,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 
             case SD_CONFIGURE_PINS:
             {
-                if(configure_pins() == MEXT2_RETURN_FAILURE)
+                if(mext2_configure_pins() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Pin initialization failed.");
                     sd_state = SD_ERROR;
@@ -307,7 +307,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
 
             case SD_RESET_SOFTWARE:
             {
-                set_clock_frequency(100000);
+                mext2_set_clock_frequency(100000);
 
                 mext2_delay(1);
                 mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
@@ -352,7 +352,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
                 if(prepare_init_process() == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("Cannot prepare for initialization process.");
-                    reset_pins();
+                    mext2_reset_pins();
                     sd_state = SD_ERROR;
                 } else sd_state = SD_START_INIT_PROCESS;
             }
@@ -385,7 +385,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
                 if(read_CSD_register(sd) == MEXT2_RETURN_FAILURE)
                 {
                     mext2_error("CSD register read_strategy failed.");
-                    reset_pins();
+                    mext2_reset_pins();
                     sd_state = SD_ERROR;
                 } else sd_state = SD_INITIALIZED;
             }

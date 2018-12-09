@@ -36,7 +36,7 @@ STATIC uint8_t single_block_read(uint32_t index, block512_t* block)
         return MEXT2_RETURN_FAILURE;
     }
 
-    spi_read_write(block->data, sizeof(block512_t));
+    mext2_spi_read_write(block->data, sizeof(block512_t));
 
     wait_8_clock_cycles();
     wait_8_clock_cycles();
@@ -71,7 +71,7 @@ STATIC uint8_t multiple_block_read(uint32_t index, block512_t* blocks, uint8_t b
             return MEXT2_RETURN_FAILURE;
         }
 
-        spi_read_write(blocks[i].data, sizeof(block512_t));
+        mext2_spi_read_write(blocks[i].data, sizeof(block512_t));
 
         wait_8_clock_cycles();
         wait_8_clock_cycles();
@@ -137,9 +137,9 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
     uint16_t crc = (uint16_t)crc16(&block->data[0], sizeof(block512_t));
     if(!mext2_is_big_endian())
         crc = mext2_flip_endianess16(crc);
-    spi_read_write(&token, sizeof(token));
-    spi_read_write(&block->data[0], sizeof(block512_t));
-    spi_read_write((uint8_t*)&crc, sizeof(crc));
+    mext2_spi_read_write(&token, sizeof(token));
+    mext2_spi_read_write(&block->data[0], sizeof(block512_t));
+    mext2_spi_read_write((uint8_t*)&crc, sizeof(crc));
 
     wait_for_response(&token);
     uint8_t status = token & DATA_RESPONSE_TOKEN_STATUS_MASK;
@@ -147,7 +147,7 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
     do
     {
         token = 0xff;
-        spi_read_write(&token, sizeof(token));
+        mext2_spi_read_write(&token, sizeof(token));
     } while(token == 0);
 
     if(status != DATA_ACCEPTED)
@@ -190,9 +190,9 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
         uint16_t crc = (uint16_t)crc16(&blocks[i].data[0], sizeof(block512_t));
         if(!mext2_is_big_endian())
             crc = mext2_flip_endianess16(crc);
-        spi_read_write(&token, sizeof(token));
-        spi_read_write(&blocks[i].data[0], sizeof(block512_t));
-        spi_read_write((uint8_t*)&crc, sizeof(crc));
+        mext2_spi_read_write(&token, sizeof(token));
+        mext2_spi_read_write(&blocks[i].data[0], sizeof(block512_t));
+        mext2_spi_read_write((uint8_t*)&crc, sizeof(crc));
 
         if(!wait_for_response(&token))
             return MEXT2_RETURN_FAILURE;
@@ -200,7 +200,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
         do
         {
             response.r1 = 0xff;
-            spi_read_write((uint8_t*) &response, 1);
+            mext2_spi_read_write((uint8_t*) &response, 1);
         } while(response.r1 == 0);
 
         status = token & DATA_RESPONSE_TOKEN_STATUS_MASK;
@@ -241,13 +241,13 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
     else
     {
         token = STOP_BLOCK_TOKEN_MULTIPLE_WRITE;
-        spi_read_write(&token, sizeof(token));
+        mext2_spi_read_write(&token, sizeof(token));
 
         wait_8_clock_cycles();
         do
         {
             response.r1 = 0xff;
-            spi_read_write((uint8_t*) &response, 1);
+            mext2_spi_read_write((uint8_t*) &response, 1);
         } while(response.r1 == 0);
     }
 
