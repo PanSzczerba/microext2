@@ -203,23 +203,31 @@ test: build_test
 	$Eout/$(TESTDIR_ENDIANESS)/test | tail -6; echo
 
 ######### MANUAL TESTS ########
-MANUAL_BINS = out/$(MANUAL_TESTDIR)/test
 MANUAL_LIBS = -Lout/$(MAINDIR) $(LIBS) -lmext2
 
-build_manual: $(MANUAL_BINS) 
 
-out/$(MANUAL_TESTDIR)/%.o: src/$(MANUAL_TESTDIR)/%.c src/$(MANUAL_TESTDIR)/%.h | $$(@D)/
+out/$(MANUAL_TESTDIR)/%.o: src/$(MANUAL_TESTDIR)/%.c src/$(MANUAL_TESTDIR)/helpers.h | $$(@D)/
 	@$(call print, CC, $(@))
 	$E$(CC) $(CFLAGS) -c -o $@ $< $(INCLUDE) 
 
-out/$(MANUAL_TESTDIR)/test: out/$(MANUAL_TESTDIR)/test.o out/$(MAINDIR)/libmext2.so
+MANUAL_BINS = out/$(MANUAL_TESTDIR)/endianess_test \
+ out/$(MANUAL_TESTDIR)/mbr_test \
+ out/$(MANUAL_TESTDIR)/sd_test \
+ out/$(MANUAL_TESTDIR)/copy_test \
+ out/$(MANUAL_TESTDIR)/create_test
+
+build_manual: $(MANUAL_BINS) 
+
+$(MANUAL_BINS): %: %.o out/$(MAINDIR)/libmext2.so
 	@$(call print, CC, $(@))
 	$E$(CC) $(INCLUDE) -o $@ $^ $(MANUAL_LIBS)
 
 manual_test: build_manual
-	@$(call print, RUN, out/$(MANUAL_TESTDIR)/test)
-	$Eout/$(MANUAL_TESTDIR)/test
-
+	@for test in $(MANUAL_BINS) ; do \
+		echo "  RUN $$test";\
+		$$test;\
+		echo "";\
+	done
 
 ########### CLEAN ############
 clean:

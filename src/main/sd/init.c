@@ -270,7 +270,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             {
                 mext2_reset_pins();
                 sd -> sd_initialized = FALSE;
-                mext2_set_clock_frequency(MAX_CLOCK_FREQUENCY);
+                mext2_set_clock_frequency(MEXT2_MAX_CLOCK_FREQUENCY);
                 return MEXT2_RETURN_FAILURE;
             }
             break;
@@ -278,7 +278,7 @@ uint8_t mext2_sd_init(mext2_sd* sd)
             case SD_INITIALIZED:
             {
                 sd -> sd_initialized = TRUE;
-                mext2_set_clock_frequency(MAX_CLOCK_FREQUENCY);
+                mext2_set_clock_frequency(MEXT2_MAX_CLOCK_FREQUENCY);
                 goto done;
             }
             break;

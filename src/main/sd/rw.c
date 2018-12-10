@@ -138,7 +138,7 @@ STATIC uint8_t single_block_wite(uint32_t index, block512_t* block)
     if(!mext2_is_big_endian())
         crc = mext2_flip_endianess16(crc);
     mext2_spi_read_write(&token, sizeof(token));
-    mext2_spi_read_write(&block->data[0], sizeof(block512_t));
+    mext2_spi_write(&block->data[0], sizeof(block512_t));
     mext2_spi_read_write((uint8_t*)&crc, sizeof(crc));
 
     wait_for_response(&token);
@@ -191,7 +191,7 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
         if(!mext2_is_big_endian())
             crc = mext2_flip_endianess16(crc);
         mext2_spi_read_write(&token, sizeof(token));
-        mext2_spi_read_write(&blocks[i].data[0], sizeof(block512_t));
+        mext2_spi_write(&blocks[i].data[0], sizeof(block512_t));
         mext2_spi_read_write((uint8_t*)&crc, sizeof(crc));
 
         if(!wait_for_response(&token))
@@ -253,7 +253,9 @@ STATIC uint8_t multiple_block_write(uint32_t index, block512_t* blocks, uint8_t 
 
     wait_8_clock_cycles();
     if(status != DATA_ACCEPTED)
+    {
         return MEXT2_RETURN_FAILURE;
+    }
     else
         return MEXT2_RETURN_SUCCESS;
 }
