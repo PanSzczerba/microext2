@@ -214,7 +214,8 @@ MANUAL_BINS = out/$(MANUAL_TESTDIR)/endianess_test \
  out/$(MANUAL_TESTDIR)/mbr_test \
  out/$(MANUAL_TESTDIR)/sd_test \
  out/$(MANUAL_TESTDIR)/copy_test \
- out/$(MANUAL_TESTDIR)/create_test
+ out/$(MANUAL_TESTDIR)/create_test \
+ out/$(MANUAL_TESTDIR)/clear_test
 
 build_manual: $(MANUAL_BINS) 
 

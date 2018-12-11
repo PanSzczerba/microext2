@@ -14,7 +14,7 @@ int main(void)
     if((fd = mext2_open(&sd, "/a", MEXT2_WRITE | MEXT2_TRUNCATE)) != NULL)
     {
         mext2_set_log_level(INFO);
-        mext2_log("File was successfully cleared");
+        mext2_log("File was successfully opened");
         return 0;
     }
     else
