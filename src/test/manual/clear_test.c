@@ -13,14 +13,13 @@ int main(void)
     mext2_file* fd;
     if((fd = mext2_open(&sd, "/a", MEXT2_WRITE | MEXT2_TRUNCATE)) != NULL)
     {
-        mext2_set_log_level(INFO);
-        mext2_log("File was successfully opened");
+        fprintf(stderr, "File was successfully cleared\n");
+        mext2_close(fd);
         return 0;
     }
     else
     {
-        mext2_set_log_level(INFO);
-        mext2_log("File couldn't  be successfully opened");
+        fprintf(stderr, "File couldn't  be successfully opened\n");
         return 1;
     }
 
