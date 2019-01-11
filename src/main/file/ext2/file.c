@@ -24,7 +24,10 @@ uint8_t mext2_ext2_open(struct mext2_file* fd, char* path, uint8_t mode)
         create_if_not_found = MEXT2_TRUE;
     uint32_t inode_number = mext2_get_regular_file_inode(fd->sd, path, create_if_not_found);
     if(inode_number == EXT2_INVALID_INO)
+    {
+        mext2_error("Could not find file at path: %s", path);
         return MEXT2_RETURN_FAILURE;
+    }
 
     fd->fs_specific.ext2.i_desc.inode_no = inode_number;
     struct mext2_ext2_inode* inode;

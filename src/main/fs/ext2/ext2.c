@@ -36,6 +36,39 @@ enum block_indirection_level
     TRIPLE_INDIRECT_BLOCK,
 };
 
+STATIC uint32_t last_data_block_index(mext2_sd* sd, struct mext2_ext2_inode* inode)
+{
+    uint32_t data_blocks = EXT2_INODE_BLOCK_SIZE(inode->i_blocks, sd->fs.descriptor.ext2.s_log_block_size);
+    uint32_t block_addresses_per_block = EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) / sizeof(uint32_t);
+    uint32_t first_block_index_in_double_indirect = I_INDIRECT_BLOCK_INDEX + block_addresses_per_block;
+    uint32_t first_block_index_in_triple_indirect = first_block_index_in_double_indirect + block_addresses_per_block * block_addresses_per_block;
+    if(data_blocks >= I_INDIRECT_BLOCK_INDEX)
+        data_blocks--;
+
+    if(data_blocks >= first_block_index_in_double_indirect)
+    {
+        data_blocks--;
+        if(data_blocks >= first_block_index_in_triple_indirect)
+        {
+            data_blocks -= block_addresses_per_block;
+        }
+        else
+        {
+            uint16_t blocks_to_decrement = (data_blocks - I_INDIRECT_BLOCK_INDEX) / block_addresses_per_block;
+            data_blocks -= (data_blocks - I_INDIRECT_BLOCK_INDEX - blocks_to_decrement) / block_addresses_per_block;
+        }
+    }
+
+    if(data_blocks >= first_block_index_in_triple_indirect)
+    {
+        data_blocks--;
+
+        uint16_t blocks_to_decrement = (data_blocks - first_block_index_in_double_indirect) / block_addresses_per_block;
+        data_blocks -= (data_blocks - first_block_index_in_double_indirect - blocks_to_decrement) / block_addresses_per_block;
+    }
+    return 0;
+}
+
 STATIC uint32_t direct_block_addresses(uint16_t block_addresses_per_block, uint8_t indirection_level)
 {
     uint32_t direct_blocks = 1;
@@ -2085,7 +2118,8 @@ uint8_t mext2_ext2_insert_dir_entry(struct mext2_sd* sd, uint32_t dir_inode, str
     }
 
     uint16_t current_dir_entry_minimal_size = sizeof(struct mext2_ext2_dir_entry_head) + mext2_le_to_cpu16(current_dir_entry->head.name_len);
-    current_dir_entry_minimal_size += (current_dir_entry_minimal_size % 4);
+    if(current_dir_entry_minimal_size % 4 != 0)
+        current_dir_entry_minimal_size += 4 - (current_dir_entry_minimal_size % 4);
     if(EXT2_BLOCK_SIZE(sd->fs.descriptor.ext2.s_log_block_size) - (dir_entry_pos + current_dir_entry_minimal_size) >= sizeof(struct mext2_ext2_dir_entry_head) + dir_entry->name_len)
     {
         // dir_entry can fit into current block

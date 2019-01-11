@@ -49,3 +49,15 @@ void mext2_msg(uint8_t level, char* str,...)
     if(level >= mext2_log_level)
         fprintf(mext2_log_file, "%s: %s\n", mext2_level2string[level], buffer);
 }
+
+void mext2_print(char* str, ...)
+{
+    char buffer[MAX_MESSAGE_LEN];
+    va_list args;
+    va_start(args, str);
+    vsprintf(buffer, str, args);
+    va_end(args);
+    if(!mext2_is_log_file_initialized)
+        mext2_initialize_log_file();
+    fprintf(mext2_log_file, "%s", buffer);
+}

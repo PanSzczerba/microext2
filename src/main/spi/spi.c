@@ -80,6 +80,39 @@ uint8_t mext2_spi_read_write(uint8_t* buffer, size_t buffer_size)
     return MEXT2_RETURN_SUCCESS;
 }
 
+uint8_t mext2_spi_write(uint8_t* buffer, size_t buffer_size)
+{
+    if(!configured_pins)
+    {
+        mext2_error("Can't read - pins have not been configured");
+        return MEXT2_RETURN_FAILURE;
+    }
+
+    mext2_pin_set(MEXT2_CS, MEXT2_LOW);
+
+    for(size_t i = 0; i < buffer_size; i++)
+    {
+        for(uint8_t mask = 0x80; mask > 0; mask >>= 1)
+        {
+            //send command
+            if(mask & buffer[i])
+                mext2_pin_set(MEXT2_MOSI, MEXT2_HIGH);
+            else
+                mext2_pin_set(MEXT2_MOSI, MEXT2_LOW);
+
+            // tick clock
+            mext2_pin_set(MEXT2_SCLK, MEXT2_HIGH);
+            mext2_delay_microseconds(clock_delay);
+            mext2_pin_get(MEXT2_MISO);
+            mext2_pin_set(MEXT2_SCLK, MEXT2_LOW);
+            mext2_delay_microseconds(clock_delay);
+        }
+    }
+
+    mext2_pin_set(MEXT2_CS, MEXT2_HIGH);
+    return MEXT2_RETURN_SUCCESS;
+}
+
 /*********** RESET PINS ***********/
 
 void mext2_reset_pins()
@@ -100,7 +133,7 @@ void mext2_reset_pins()
 
 void mext2_set_clock_frequency(uint64_t freq)
 {
-    if(freq == MAX_CLOCK_FREQUENCY)
+    if(freq == MEXT2_MAX_CLOCK_FREQUENCY)
         clock_delay = 0;
     else
         clock_delay = FREQUENCY_TO_DELAY(freq);
